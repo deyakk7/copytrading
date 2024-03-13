@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from rest_framework.viewsets import ModelViewSet
 
 from strategy.models import Strategy
@@ -8,4 +9,9 @@ from trader.permissions import IsSuperUser
 class StrategyViewSet(ModelViewSet):
     queryset = Strategy.objects.all()
     serializer_class = StrategySerializer
-    permission_classes = (IsSuperUser, )
+    permission_classes = (IsSuperUser,)
+
+
+def test_func(request):
+
+    return HttpResponse("good")

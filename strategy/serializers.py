@@ -8,10 +8,19 @@ from strategy.models import Strategy
 class StrategySerializer(serializers.ModelSerializer):
     cryptos = CryptoSerializer(many=True, source='crypto')
     trader = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
+    total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
 
     class Meta:
         model = Strategy
-        fields = ['id', 'name', 'cryptos', 'trader']
+        fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
+                  'total_deposited']
+
+    # def to_representation(self, instance):
+    #     data = super().to_representation(instance)
+    #     if data['custom_profit'] is None:
+    #         del data['custom_profit']
+    #     return data
 
     def create(self, validated_data):
         if "trader" not in validated_data.keys():
