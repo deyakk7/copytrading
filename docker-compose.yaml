@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  django:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/trading_app
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  celeryworker:
+    build: .
+    command: celery -A root worker --loglevel=info
+    volumes:
+      - .:/trading_app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - django
+
+  celerybeat:
+    build: .
+    command: celery -A root beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/trading_app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - django
+
+  redis:
+    image: "redis:alpine"
