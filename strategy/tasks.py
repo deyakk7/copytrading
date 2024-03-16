@@ -18,7 +18,7 @@ def get_current_exchange_rate():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    return {token['symbol']: token['price'] for token in data if 'USDT' in token['symbol']}
+    return {token['symbol']: token['price'] for token in data}
 
 
 def get_klines(symbol_input: str):
@@ -73,7 +73,7 @@ def check_task():
         all_usdt_in_profile = decimal.Decimal(0)
         all_cryptos = strategy.crypto.all()
         for crypto in all_cryptos:
-            crypto_in_usdt = convert_to_usdt(exchange_rate, crypto.name.upper(), crypto.value)
+            crypto_in_usdt = convert_to_usdt(exchange_rate, crypto.name.upper(), crypto.total_value)
             all_cryptos_in_strategy[crypto.name.upper()] = crypto_in_usdt
             all_usdt_in_profile += crypto_in_usdt
 

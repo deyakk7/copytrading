@@ -14,3 +14,12 @@ class Strategy(models.Model):
     min_deposit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     max_deposit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies')
+
+    def __str__(self):
+        return self.name
+
+
+class UsersInStrategy(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='strategies')
+    strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='users')
+    value = models.DecimalField(default=0, decimal_places=7, max_digits=30)

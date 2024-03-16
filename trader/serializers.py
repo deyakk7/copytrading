@@ -22,12 +22,15 @@ class TraderSerializer(serializers.ModelSerializer):
         return trader
 
     def update(self, instance, validated_data):
-        strategies_data = validated_data.pop('strategies')
+        strategies_data = validated_data.pop('strategies', None)
         instance.nickname = validated_data.get('name', instance.nickname)
         instance.email = validated_data.get('email', instance.email)
         instance.password = validated_data.get('password', instance.password)
 
         instance.save()
+
+        if strategies_data is None:
+            return instance
 
         keep_strategies = []
         for strategy_data in strategies_data:

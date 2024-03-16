@@ -1,8 +1,32 @@
+import decimal
+
 from rest_framework import serializers
 
 from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
-from strategy.models import Strategy
+from strategy.models import Strategy, UsersInStrategy
+
+
+class StrategyUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsersInStrategy
+        fields = ['user', 'value', 'strategy']
+
+    def validate(self, data):
+        super().validate(data)
+
+        strategy = Strategy.objects.get(id=data['strategy'].id)
+        if strategy.users.filter(user_id=data['user']):
+            raise serializers.ValidationError({'error': "User already exists in strategy"})
+
+        if data['value'] > strategy.max_deposit:
+            raise serializers.ValidationError({"error": "Value must be less than max deposit"})
+
+        if data['value'] < strategy.min_deposit:
+            raise serializers.ValidationError({"error": "Value must be greater than min deposit"})
+        strategy.total_deposited = sum([x.value for x in strategy.users.all()] + [data['value']])
+        strategy.save()
+        return data
 
 
 class StrategySerializer(serializers.ModelSerializer):
@@ -10,11 +34,12 @@ class StrategySerializer(serializers.ModelSerializer):
     trader = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
     avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
+    users = StrategyUserSerializer(many=True, read_only=True)
 
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
-                  'total_deposited']
+                  'total_deposited', 'users']
 
     # def to_representation(self, instance):
     #     data = super().to_representation(instance)
@@ -33,10 +58,15 @@ class StrategySerializer(serializers.ModelSerializer):
         return strategy
 
     def update(self, instance, validated_data):
-        cryptos_data = validated_data.pop('crypto')
+        cryptos_data = validated_data.pop('crypto', None)
         instance.name = validated_data.get('name', instance.name)
+        instance.about = validated_data.get('about', instance.about)
+        instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
+        instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
         instance.save()
 
+        if cryptos_data is None:
+            return instance
         keep_cryptos = []
         for crypto_data in cryptos_data:
             c = Crypto.objects.create(strategy=instance, **crypto_data)

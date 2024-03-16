@@ -1,17 +1,131 @@
-from django.http import HttpResponse
+import random
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from strategy.models import Strategy
-from strategy.serializers import StrategySerializer
-from trader.permissions import IsSuperUser
+from crypto.models import TOKENS_PAIR
+from strategy.models import Strategy, UsersInStrategy
+from strategy.serializers import StrategySerializer, StrategyUserSerializer
+from strategy.tasks import get_current_exchange_rate
+from trader.permissions import IsSuperUserOrReadOnly
+from transaction.models import Transaction
+from transaction.serializers import TransactionSerializer
 
 
 class StrategyViewSet(ModelViewSet):
     queryset = Strategy.objects.all()
     serializer_class = StrategySerializer
-    permission_classes = (IsSuperUser,)
+    permission_classes = (IsSuperUserOrReadOnly,)
 
 
-def test_func(request):
+@api_view(['POST'])
+@login_required()
+def add_user_into_strategy(request, pk: int):
+    input_data = request.data
+    input_data['strategy'] = pk
+    input_data['user'] = request.user.id
+    data = StrategyUserSerializer(data=request.data)
+    if data.is_valid():
+        data.save()
+        return JsonResponse(data.data, status=201)
 
-    return HttpResponse("good")
+    return JsonResponse(data.errors, status=400)
+
+
+@api_view(['DELETE'])
+@login_required()
+def remove_user_from_strategy(request, pk: int):
+    data = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
+    if data is not None:
+        data.delete()
+        strategy = data.strategy
+        strategy.total_deposited -= data.value
+        strategy.save()
+        transactions = random_black_box(strategy)
+
+        return Response(transactions, status=200)
+    return JsonResponse({"error": "User not found in strategy"}, status=404)
+
+
+# def get_klines_for_black_box(symbol_input: str):
+#     if symbol_input == 'USDT':
+#         return decimal.Decimal(0)
+#
+#     symbol = symbol_input + "USDT"
+#     url = "https://api.binance.com/api/v3/klines"
+#
+#     params = {
+#         'symbol': symbol,
+#         'interval': '1h',
+#         'limit': 10
+#     }
+#
+#     response = rq.get(url, params=params)
+#     data = response.json()
+#     new_data = []
+#     for l in data:
+#         new_data.append([l[3], l[2]])
+#     return new_data
+
+
+# def black_box(current_money_in_strategy, new_money_in_strategy, all_crypto_value):
+#     difference = new_money_in_strategy - current_money_in_strategy
+#     info_tokens = dict()
+#     for name in all_crypto_value.keys():
+#         info_tokens[name] = get_klines_for_black_box(name)
+#     from pprint import pprint
+#     pprint(info_tokens)
+
+
+def random_black_box(strategy):
+    count_of_transaction = random.randint(3, 6)
+    cryptos = [x.name for x in strategy.crypto.all()]
+    all_tokens_list = [i + "USDT" for i in cryptos if i + "USDT" in TOKENS_PAIR]
+
+    for i in range(len(cryptos)):
+        for j in range(i + 1, len(cryptos)):
+            f, s = cryptos[i], cryptos[j]
+            if f + s in TOKENS_PAIR:
+                all_tokens_list.append(f + s)
+            elif s + f in TOKENS_PAIR:
+                all_tokens_list.append(s + f)
+
+    exchange_rate = get_current_exchange_rate()
+    transactions = []
+    for _ in range(count_of_transaction):
+        tokens_pair = random.choice(all_tokens_list)
+        amount = random.randint(10000000, 100000000) / 10000000
+        price = exchange_rate[tokens_pair]
+        side = bool(random.randint(0, 1))
+
+        transaction = Transaction.objects.create(
+            trader=strategy.trader,
+            crypto_pair=tokens_pair,
+            amount=amount,
+            side=side,
+            price=price,
+        )
+        transactions.append(TransactionSerializer(transaction).data)
+    return transactions
+
+# @api_view(['GET'])
+# def test_func(request, pk):
+# all_money_in_strategy = 0
+# strategy_id = 1
+# exchange_rate = get_current_exchange_rate()
+# cryptos = UsersCryptoInStrategy.objects.filter(strategy_user_crypto__strategy_id=strategy_id).prefetch_related(
+#     'strategy_user_crypto')
+# all_crypto_value = {}
+# for crypto in cryptos:
+#     if all_crypto_value.get(crypto.name) is None:
+#         all_crypto_value[crypto.name] = crypto.value
+#     else:
+#         all_crypto_value[crypto.name] += crypto.value
+#     all_money_in_strategy += convert_to_usdt(exchange_rate, crypto.name, crypto.value)
+#
+# print(all_crypto_value)
+# black_box(all_money_in_strategy, 400, all_crypto_value)
+# return HttpResponse(f'fdfdf')
