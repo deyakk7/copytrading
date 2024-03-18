@@ -13,8 +13,11 @@ class TraderSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def create(self, validated_data):
-        strategies_data = validated_data.pop('strategies')
+        strategies_data = validated_data.pop('strategies', None)
         trader = Trader.objects.create(**validated_data)
+
+        if strategies_data is None:
+            return trader
 
         for strategy_data in strategies_data:
             strategy_data['trader'] = trader
@@ -24,8 +27,8 @@ class TraderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         strategies_data = validated_data.pop('strategies', None)
         instance.nickname = validated_data.get('name', instance.nickname)
-        instance.email = validated_data.get('email', instance.email)
-        instance.password = validated_data.get('password', instance.password)
+        instance.about = validated_data.get('about', instance.about)
+        instance.photo = validated_data.get('photo', instance.photo)
 
         instance.save()
 

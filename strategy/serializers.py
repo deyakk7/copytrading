@@ -5,6 +5,7 @@ from rest_framework import serializers
 from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy
+from trader.models import Trader
 
 
 class StrategyUserSerializer(serializers.ModelSerializer):
@@ -31,7 +32,7 @@ class StrategyUserSerializer(serializers.ModelSerializer):
 
 class StrategySerializer(serializers.ModelSerializer):
     cryptos = CryptoSerializer(many=True, source='crypto')
-    trader = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    trader = serializers.PrimaryKeyRelatedField(queryset=Trader.objects.all(), required=False)
     avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     users = StrategyUserSerializer(many=True, read_only=True)
@@ -48,11 +49,15 @@ class StrategySerializer(serializers.ModelSerializer):
     #     return data
 
     def create(self, validated_data):
-        if "trader" not in validated_data.keys():
-            raise serializers.ValidationError("Trader is required")
+        # if "trader" not in validated_data.keys():
+        #     raise serializers.ValidationError("Trader is required")
 
-        cryptos_data = validated_data.pop('crypto')
+        cryptos_data = validated_data.pop('crypto', None)
         strategy = Strategy.objects.create(**validated_data)
+
+        if cryptos_data is None:
+            return strategy
+
         for crypto_data in cryptos_data:
             Crypto.objects.create(strategy=strategy, **crypto_data)
         return strategy
@@ -61,6 +66,7 @@ class StrategySerializer(serializers.ModelSerializer):
         cryptos_data = validated_data.pop('crypto', None)
         instance.name = validated_data.get('name', instance.name)
         instance.about = validated_data.get('about', instance.about)
+        instance.trader = validated_data.get('trader', instance.trader)
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
         instance.save()

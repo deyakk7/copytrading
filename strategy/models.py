@@ -13,7 +13,7 @@ class Strategy(models.Model):
     total_deposited = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     min_deposit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     max_deposit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
-    trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies')
+    trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies', null=True, blank=True)
 
     def __str__(self):
         return self.name

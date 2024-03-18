@@ -16,6 +16,7 @@ cryptography==42.0.5
 defusedxml==0.8.0rc2
 Django==5.0.3
 django-celery-beat==2.6.0
+django-cors-headers==4.3.1
 django-templated-mail==1.1.1
 django-timezone-field==6.1.0
 djangorestframework==3.14.0
@@ -30,6 +31,7 @@ jsonschema-specifications==2023.12.1
 kombu==5.3.5
 oauthlib==3.2.2
 packaging==24.0
+pillow==10.2.0
 prompt-toolkit==3.0.43
 pycparser==2.21
 PyJWT==2.8.0
