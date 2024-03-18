@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'strategy.apps.StrategyConfig',
     'trader.apps.TraderConfig',
     'transaction.apps.TransactionConfig',
+    'auth_service.apps.AuthServiceConfig',
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
 ]
+
+AUTH_USER_MODEL = 'auth_service.User'
 
 ROOT_URLCONF = 'root.urls'
 
@@ -132,6 +135,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
+}
+
+DJOSER = {
+    'SERIALIZERS': {
+        'user': 'auth_service.serializers.UserSerializer',
+        'user_create': 'auth_service.serializers.UserRegistrationSerializer',
+    },
 }
 
 MEDIA_URL = '/media/'

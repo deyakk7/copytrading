@@ -25,8 +25,7 @@ class StrategyUserSerializer(serializers.ModelSerializer):
 
         if data['value'] < strategy.min_deposit:
             raise serializers.ValidationError({"error": "Value must be greater than min deposit"})
-        strategy.total_deposited = sum([x.value for x in strategy.users.all()] + [data['value']])
-        strategy.save()
+
         return data
 
 

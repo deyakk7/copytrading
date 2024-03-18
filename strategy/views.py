@@ -1,8 +1,9 @@
 import random
 
+from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
@@ -10,7 +11,7 @@ from crypto.models import TOKENS_PAIR
 from strategy.models import Strategy, UsersInStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer
 from strategy.tasks import get_current_exchange_rate
-from trader.permissions import IsSuperUserOrReadOnly
+from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
 
@@ -20,6 +21,14 @@ class StrategyViewSet(ModelViewSet):
     serializer_class = StrategySerializer
     permission_classes = (IsSuperUserOrReadOnly,)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        users = UsersInStrategy.objects.filter(strategy=instance).exists()
+        if users:
+            return JsonResponse({'error': 'You cannot delete this strategy because it has users.'})
+        self.perform_destroy(instance)
+        return Response(status=204)
+
 
 @api_view(['POST'])
 @login_required()
@@ -27,8 +36,18 @@ def add_user_into_strategy(request, pk: int):
     input_data = request.data
     input_data['strategy'] = pk
     input_data['user'] = request.user.id
-    data = StrategyUserSerializer(data=request.data)
+    strategy = Strategy.objects.get(id=pk)
+    wallet = request.user.wallet
+    if wallet < strategy.min_deposit or wallet < input_data['value']:
+        return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
+
+    data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
+        with transaction.atomic():
+            strategy.total_deposited += input_data['value']
+            request.user.wallet -= input_data['value']
+            strategy.save()
+            request.user.save()
         data.save()
         return JsonResponse(data.data, status=201)
 
@@ -40,14 +59,26 @@ def add_user_into_strategy(request, pk: int):
 def remove_user_from_strategy(request, pk: int):
     data = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
     if data is not None:
-        data.delete()
-        strategy = data.strategy
-        strategy.total_deposited -= data.value
-        strategy.save()
+        with transaction.atomic():
+            strategy = data.strategy
+            strategy.total_deposited -= data.value
+            request.user.wallet += data.value
+            request.user.save()
+            data.delete()
+            strategy.save()
         transactions = random_black_box(strategy)
 
         return Response(transactions, status=200)
     return JsonResponse({"error": "User not found in strategy"}, status=404)
+
+
+@api_view(['GET'])
+@login_required()
+@permission_classes([IsSuperUser])
+def get_all_available_strategies(request):
+    strategies = Strategy.objects.filter(trader=None)
+    data = StrategySerializer(strategies, many=True).data
+    return JsonResponse(data, safe=False)
 
 
 # def get_klines_for_black_box(symbol_input: str):
