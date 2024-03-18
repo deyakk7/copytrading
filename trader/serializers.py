@@ -26,7 +26,7 @@ class TraderSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         strategies_data = validated_data.pop('strategies', None)
-        instance.nickname = validated_data.get('name', instance.nickname)
+        instance.nickname = validated_data.get('nickname', instance.nickname)
         instance.about = validated_data.get('about', instance.about)
         instance.photo = validated_data.get('photo', instance.photo)
 
