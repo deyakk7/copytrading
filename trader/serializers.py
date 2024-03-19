@@ -29,6 +29,8 @@ class TraderSerializer(serializers.ModelSerializer):
         instance.nickname = validated_data.get('nickname', instance.nickname)
         instance.about = validated_data.get('about', instance.about)
         instance.photo = validated_data.get('photo', instance.photo)
+        instance.followers_count = validated_data.get('followers_count', instance.followers_count)
+        instance.copiers_count = validated_data.get('copiers_count', instance.copiers_count)
 
         instance.save()
 

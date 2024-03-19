@@ -38,16 +38,23 @@ def follow_trader(request, trader_id):
     data = UsersFollowsTrader.objects.filter(user=request.user, trader_id=trader_id).exists()
     if data:
         return JsonResponse({'error': 'You already follow this trader.'})
-    UsersFollowsTrader.objects.create(user=request.user, trader_id=trader_id)
+    obj = UsersFollowsTrader.objects.create(user=request.user, trader_id=trader_id)
+    obj.trader.followers_count += 1
+    obj.trader.save()
     return JsonResponse({'success': 'You have successfully followed this trader.'})
 
 
-@api_view(['POST'])
+@api_view(['DELETE'])
 @login_required()
 def unfollow_trader(request, trader_id):
     data = UsersFollowsTrader.objects.filter(user=request.user, trader_id=trader_id).exists()
     if not data:
         return JsonResponse({'error': 'You do not follow this trader.'})
     UsersFollowsTrader.objects.filter(user=request.user, trader_id=trader_id).delete()
+    trader = Trader.objects.get(id=trader_id)
+    trader.followers_count -= 1
+    if trader.followers_count < 0:
+        trader.followers_count = 0
+    trader.save()
     return JsonResponse({'success': 'You have successfully unfollowed this trader.'})
 
