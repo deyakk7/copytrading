@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from strategy.serializers import StrategySerializer
-from trader.models import Trader
+from trader.models import Trader, UsersFollowsTrader
 
 
 class TraderSerializer(serializers.ModelSerializer):
@@ -48,3 +48,12 @@ class TraderSerializer(serializers.ModelSerializer):
                 strategy.delete()
 
         return instance
+
+
+class UsersFollowingsListSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username')
+    trader = serializers.CharField(source='trader.nickname')
+
+    class Meta:
+        model = UsersFollowsTrader
+        fields = ['user', 'trader', 'date_of_following']

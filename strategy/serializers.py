@@ -1,5 +1,3 @@
-import decimal
-
 from rest_framework import serializers
 
 from crypto.models import Crypto
@@ -11,7 +9,7 @@ from trader.models import Trader
 class StrategyUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        fields = ['user', 'value', 'strategy']
+        fields = ['user', 'value', 'strategy', 'date_of_adding']
 
     def validate(self, data):
         super().validate(data)
@@ -27,6 +25,16 @@ class StrategyUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"error": "Value must be greater than min deposit"})
 
         return data
+
+
+class StrategyUserListSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+    trader = serializers.CharField(source='strategy.trader.nickname')
+    strategy = serializers.CharField(source='strategy.name')
+
+    class Meta:
+        model = UsersInStrategy
+        fields = ['username', 'trader', 'strategy', 'value', 'date_of_adding']
 
 
 class StrategySerializer(serializers.ModelSerializer):

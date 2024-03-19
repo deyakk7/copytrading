@@ -3,13 +3,14 @@ import random
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import TOKENS_PAIR
 from strategy.models import Strategy, UsersInStrategy
-from strategy.serializers import StrategySerializer, StrategyUserSerializer
+from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer
 from strategy.tasks import get_current_exchange_rate
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import Transaction
@@ -30,6 +31,13 @@ class StrategyViewSet(ModelViewSet):
         return Response(status=204)
 
 
+class UsersCopiedListView(generics.ListAPIView):
+    serializer_class = StrategyUserListSerializer
+
+    def get_queryset(self):
+        return UsersInStrategy.objects.order_by('-date_of_adding')[:10]
+
+
 @api_view(['POST'])
 @login_required()
 def add_user_into_strategy(request, pk: int):
@@ -40,6 +48,8 @@ def add_user_into_strategy(request, pk: int):
     wallet = request.user.wallet
     if wallet < strategy.min_deposit or wallet < input_data['value']:
         return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
+    if strategy.trader is None:
+        return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():

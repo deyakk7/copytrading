@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import JsonResponse
+from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -8,7 +9,7 @@ from rest_framework.viewsets import ModelViewSet
 from strategy.models import UsersInStrategy, Strategy
 from .models import Trader, UsersFollowsTrader
 from .permissions import IsSuperUserOrReadOnly, IsSuperUser
-from .serializers import TraderSerializer
+from .serializers import TraderSerializer, UsersFollowingsListSerializer
 
 
 class TraderViewSet(ModelViewSet):
@@ -23,6 +24,13 @@ class TraderViewSet(ModelViewSet):
             return JsonResponse({'error': 'You cannot delete this trader because it has users.'})
         self.perform_destroy(instance)
         return Response(status=204)
+
+
+class UserFollowedList(generics.ListAPIView):
+    serializer_class = UsersFollowingsListSerializer
+
+    def get_queryset(self):
+        return UsersFollowsTrader.objects.order_by('-date_of_following')[:10]
 
 
 @api_view(['GET'])
