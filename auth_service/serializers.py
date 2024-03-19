@@ -11,8 +11,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'date_of_registration', 'wallet', 'ip')
         extra_kwargs = {
             'date_of_registration': {'read_only': True},
-            'wallet': {'read_only': True},
-            'ip': {'read_only': True},
         }
 
 
