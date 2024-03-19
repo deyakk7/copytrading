@@ -81,36 +81,6 @@ def get_all_available_strategies(request):
     return JsonResponse(data, safe=False)
 
 
-# def get_klines_for_black_box(symbol_input: str):
-#     if symbol_input == 'USDT':
-#         return decimal.Decimal(0)
-#
-#     symbol = symbol_input + "USDT"
-#     url = "https://api.binance.com/api/v3/klines"
-#
-#     params = {
-#         'symbol': symbol,
-#         'interval': '1h',
-#         'limit': 10
-#     }
-#
-#     response = rq.get(url, params=params)
-#     data = response.json()
-#     new_data = []
-#     for l in data:
-#         new_data.append([l[3], l[2]])
-#     return new_data
-
-
-# def black_box(current_money_in_strategy, new_money_in_strategy, all_crypto_value):
-#     difference = new_money_in_strategy - current_money_in_strategy
-#     info_tokens = dict()
-#     for name in all_crypto_value.keys():
-#         info_tokens[name] = get_klines_for_black_box(name)
-#     from pprint import pprint
-#     pprint(info_tokens)
-
-
 def random_black_box(strategy):
     count_of_transaction = random.randint(3, 6)
     cryptos = [x.name for x in strategy.crypto.all()]
@@ -141,22 +111,3 @@ def random_black_box(strategy):
         )
         transactions.append(TransactionSerializer(transaction).data)
     return transactions
-
-# @api_view(['GET'])
-# def test_func(request, pk):
-# all_money_in_strategy = 0
-# strategy_id = 1
-# exchange_rate = get_current_exchange_rate()
-# cryptos = UsersCryptoInStrategy.objects.filter(strategy_user_crypto__strategy_id=strategy_id).prefetch_related(
-#     'strategy_user_crypto')
-# all_crypto_value = {}
-# for crypto in cryptos:
-#     if all_crypto_value.get(crypto.name) is None:
-#         all_crypto_value[crypto.name] = crypto.value
-#     else:
-#         all_crypto_value[crypto.name] += crypto.value
-#     all_money_in_strategy += convert_to_usdt(exchange_rate, crypto.name, crypto.value)
-#
-# print(all_crypto_value)
-# black_box(all_money_in_strategy, 400, all_crypto_value)
-# return HttpResponse(f'fdfdf')

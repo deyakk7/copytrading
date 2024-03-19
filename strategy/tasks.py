@@ -5,6 +5,7 @@ from celery import shared_task
 
 from crypto.models import Crypto
 from strategy.models import Strategy
+from trader.models import Trader
 
 
 def get_token_name():
@@ -85,3 +86,13 @@ def check_task():
             avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
         strategy.avg_profit = avg_profit
         strategy.save()
+
+    for trader in Trader.objects.all():
+        all_strategies = trader.strategies.all()
+        avg_profit = 0
+        for strategy in all_strategies:
+            avg_profit += strategy.avg_profit
+        trader.avg_profit_strategies = avg_profit / len(all_strategies)
+        trader.save()
+
+    return 'done'

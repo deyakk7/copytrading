@@ -3,5 +3,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('ping/', views.ping, name='ping'),
+    path('stats/', views.get_all_stats, name='get_all_stats')
 ]

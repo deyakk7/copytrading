@@ -1,8 +1,10 @@
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.http import JsonResponse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.viewsets import ModelViewSet
 
-from strategy.tasks import CRYPTO_NAMES
+from strategy.tasks import CRYPTO_NAMES, get_current_exchange_rate, convert_to_usdt
 from trader.permissions import IsSuperUser
 from .models import Crypto
 from .serializers import CryptoSerializer
@@ -15,5 +17,25 @@ class CryptoViewSet(ModelViewSet):
 
 
 @api_view(['GET'])
+@login_required()
+@permission_classes([IsSuperUser])
 def get_exchange_info(request):
     return JsonResponse(CRYPTO_NAMES[:100], safe=False)
+
+
+@api_view(['GET'])
+@login_required()
+@permission_classes([IsSuperUser])
+def get_all_cryptos_in_percentage(request):
+    result = Crypto.objects.values('name').annotate(total=Sum('total_value'))
+    result_dict = {item['name']: item['total'] for item in result}
+    exchange_rate = get_current_exchange_rate()
+    summary = 0
+    for key, value in result_dict.items():
+        result_in_usdt = convert_to_usdt(exchange_rate, key, value)
+        summary += result_in_usdt
+        result_dict[key] = result_in_usdt
+    for key, value in result_dict.items():
+        result_dict[key] = round(value / summary * 100, 4)
+
+    return JsonResponse(result_dict, safe=False)

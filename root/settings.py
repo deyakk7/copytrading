@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'trader.apps.TraderConfig',
     'transaction.apps.TransactionConfig',
     'auth_service.apps.AuthServiceConfig',
+    'copytrading.apps.CopytradingConfig',
 ]
 
 MIDDLEWARE = [
