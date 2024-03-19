@@ -47,7 +47,7 @@ class StrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
-                  'total_deposited', 'users']
+                  'total_deposited', 'users', 'total_copiers']
 
     # def to_representation(self, instance):
     #     data = super().to_representation(instance)
@@ -76,6 +76,12 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.trader = validated_data.get('trader', instance.trader)
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
+        if validated_data.get('total_copiers') and instance.trader is not None:
+            instance.trader.copiers_count -= instance.total_copiers
+            instance.total_copiers = validated_data.get('total_copiers', instance.total_copiers)
+            instance.trader.copiers_count += instance.total_copiers
+            instance.trader.save()
+
         instance.save()
 
         if cryptos_data is None:

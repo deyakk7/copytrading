@@ -56,6 +56,8 @@ def add_user_into_strategy(request, pk: int):
         with transaction.atomic():
             strategy.total_deposited += input_data['value']
             request.user.wallet -= input_data['value']
+            strategy.total_copiers += 1
+            strategy.trader.copiers_count += 1
             strategy.save()
             request.user.save()
         data.save()
@@ -72,6 +74,12 @@ def remove_user_from_strategy(request, pk: int):
         with transaction.atomic():
             strategy = data.strategy
             strategy.total_deposited -= data.value
+            strategy.total_copiers -= 1
+            if strategy.total_copiers == 0:
+                strategy.total_copiers = 0
+            strategy.trader.copiers_count -= 1
+            if strategy.trader.copiers_count == 0:
+                strategy.trader.copiers_count = 0
             request.user.wallet += data.value
             request.user.save()
             data.delete()
