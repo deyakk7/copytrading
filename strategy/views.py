@@ -120,12 +120,12 @@ def random_black_box(strategy):
         price = exchange_rate[tokens_pair]
         side = bool(random.randint(0, 1))
 
-        transaction = Transaction.objects.create(
+        transaction_obj = Transaction.objects.create(
             trader=strategy.trader,
             crypto_pair=tokens_pair,
             amount=amount,
             side=side,
             price=price,
         )
-        transactions.append(TransactionSerializer(transaction).data)
+        transactions.append(TransactionSerializer(transaction_obj).data)
     return transactions
