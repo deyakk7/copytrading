@@ -20,7 +20,11 @@ def get_all_stats(request):
     total_deposited_money_into_strategies = Strategy.objects.aggregate(total=Sum('total_deposited'))['total']
     traders_count = Trader.objects.count()
     total_money_in_users = User.objects.aggregate(total=Sum('wallet'))['total']
-    total_strategies_profit = Strategy.objects.aggregate(total=Sum('avg_profit'))['total'] / Strategy.objects.count()
+    total_strategies_profit = Strategy.objects.aggregate(total=Sum('avg_profit'))['total']
+    if total_strategies_profit is None:
+        total_strategies_profit = 0
+    else:
+        total_strategies_profit /= Strategy.objects.count()
 
     if total_money_in_users is None:
         total_money_in_users = 0
