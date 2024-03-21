@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 
 from decouple import config
+from django.urls import reverse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -145,5 +146,13 @@ DJOSER = {
     },
 }
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Copytrading and admin API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGIN_URL = '/auth/token/login/'

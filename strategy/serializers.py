@@ -27,6 +27,12 @@ class StrategyUserSerializer(serializers.ModelSerializer):
         return data
 
 
+class UserCopingStrategySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsersInStrategy
+        fields = ['value']
+
+
 class StrategyUserListSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     trader = serializers.CharField(source='strategy.trader.nickname')

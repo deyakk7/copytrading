@@ -1,8 +1,9 @@
 import random
 
-from django.db import transaction
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.http import JsonResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -10,7 +11,8 @@ from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import TOKENS_PAIR
 from strategy.models import Strategy, UsersInStrategy
-from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer
+from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
+    UserCopingStrategySerializer
 from strategy.tasks import get_current_exchange_rate
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import Transaction
@@ -38,6 +40,9 @@ class UsersCopiedListView(generics.ListAPIView):
         return UsersInStrategy.objects.order_by('-date_of_adding')[:10]
 
 
+@extend_schema(
+    request=UserCopingStrategySerializer,
+)
 @api_view(['POST'])
 @login_required()
 def add_user_into_strategy(request, pk: int):
