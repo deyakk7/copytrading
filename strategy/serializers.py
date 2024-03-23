@@ -3,6 +3,7 @@ from rest_framework import serializers
 from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy
+from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
 
 
@@ -33,6 +34,16 @@ class UserCopingStrategySerializer(serializers.ModelSerializer):
         fields = ['value']
 
 
+class StrategyCustomProfitSerializer(serializers.ModelSerializer):
+    minutes = serializers.IntegerField(min_value=1)
+    new_percentage_change_profit = serializers.DecimalField(max_digits=30, decimal_places=7)
+    custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
+
+    class Meta:
+        model = Strategy
+        fields = ['custom_avg_profit', 'new_percentage_change_profit', 'minutes']
+
+
 class StrategyUserListSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     trader = serializers.CharField(source='strategy.trader.nickname')
@@ -53,7 +64,7 @@ class StrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
-                  'total_deposited', 'users', 'total_copiers']
+                  'total_deposited', 'users', 'total_copiers', 'max_users', 'custom_avg_profit', 'current_custom_profit']
 
     # def to_representation(self, instance):
     #     data = super().to_representation(instance)
@@ -70,9 +81,9 @@ class StrategySerializer(serializers.ModelSerializer):
 
         if cryptos_data is None:
             return strategy
-
+        exchange_rate = get_current_exchange_rate_usdt()
         for crypto_data in cryptos_data:
-            Crypto.objects.create(strategy=strategy, **crypto_data)
+            Crypto.objects.create(strategy=strategy, exchange_rate=exchange_rate[crypto_data['name']], **crypto_data)
         return strategy
 
     def update(self, instance, validated_data):
@@ -82,11 +93,8 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.trader = validated_data.get('trader', instance.trader)
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
-        if validated_data.get('total_copiers') and instance.trader is not None:
-            instance.trader.copiers_count -= instance.total_copiers
-            instance.total_copiers = validated_data.get('total_copiers', instance.total_copiers)
-            instance.trader.copiers_count += instance.total_copiers
-            instance.trader.save()
+        instance.max_users = validated_data.get('max_users', instance.max_users)
+        instance.custom_avg_profit = validated_data.get('custom_avg_profit', instance.custom_avg_profit)
 
         instance.save()
 

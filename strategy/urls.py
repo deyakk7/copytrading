@@ -11,6 +11,7 @@ urlpatterns = [
     path('remove/<int:pk>/', views.remove_user_from_strategy, name='remove_user_from_strategy'),
     path('list_available_strategies/', views.get_all_available_strategies, name='list_available_strategies'),
     path('last_deposited_users/', views.UsersCopiedListView.as_view(), name='last_deposited_users'),
+    path('change_avg_profit/<int:pk>/', views.change_avg_profit, name='change_avg_profit'),
 ]
 
 urlpatterns += router.urls

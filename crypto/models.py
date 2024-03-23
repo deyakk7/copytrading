@@ -9,6 +9,7 @@ class Crypto(models.Model):
     total_value = models.DecimalField(max_digits=30, decimal_places=7)
     deposited_value = models.DecimalField(max_digits=30, decimal_places=7, default=0)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='crypto')
+    exchange_rate = models.DecimalField(max_digits=30, decimal_places=7, default=0)
 
 
 def get_tokens_pair():

@@ -6,14 +6,16 @@ from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import TOKENS_PAIR
 from strategy.models import Strategy, UsersInStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
-    UserCopingStrategySerializer
-from strategy.tasks import get_current_exchange_rate
+    UserCopingStrategySerializer, StrategyCustomProfitSerializer
+from strategy.tasks import change_custom_profit
+from strategy.utils import get_current_exchange_rate_pair
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
@@ -51,10 +53,12 @@ def add_user_into_strategy(request, pk: int):
     input_data['user'] = request.user.id
     strategy = Strategy.objects.get(id=pk)
     wallet = request.user.wallet
-    if wallet < strategy.min_deposit or wallet < input_data['value']:
-        return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
     if strategy.trader is None:
         return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
+    if strategy.total_copiers >= strategy.max_users:
+        return JsonResponse({"error": "This strategy is full"}, status=400, safe=False)
+    if wallet < strategy.min_deposit or wallet < input_data['value']:
+        return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
@@ -104,6 +108,21 @@ def get_all_available_strategies(request):
     return JsonResponse(data, safe=False)
 
 
+@extend_schema(
+    request=StrategyCustomProfitSerializer,
+)
+@login_required()
+@permission_classes([IsSuperUser])
+@api_view(['POST'])
+def change_avg_profit(request, pk: int):
+    get_object_or_404(Strategy, pk=pk)
+    data = StrategyCustomProfitSerializer(data=request.data)
+    if data.is_valid():
+        change_custom_profit.delay(pk, data.data)
+        return JsonResponse({"message": "sure"}, status=200)
+    return JsonResponse(data.errors, status=400)
+
+
 def random_black_box(strategy):
     count_of_transaction = random.randint(3, 6)
     cryptos = [x.name for x in strategy.crypto.all()]
@@ -117,7 +136,7 @@ def random_black_box(strategy):
             elif s + f in TOKENS_PAIR:
                 all_tokens_list.append(s + f)
 
-    exchange_rate = get_current_exchange_rate()
+    exchange_rate = get_current_exchange_rate_pair()
     transactions = []
     for _ in range(count_of_transaction):
         tokens_pair = random.choice(all_tokens_list)

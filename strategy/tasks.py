@@ -1,80 +1,31 @@
 import decimal
-
-import requests as rq
+import math
+import time
+from django.db import transaction as trans
 from celery import shared_task
 
-from crypto.models import Crypto
 from strategy.models import Strategy
+from strategy.utils import get_current_exchange_rate_pair, convert_to_usdt, get_current_exchange_rate_usdt, \
+    get_percentage_change
 from trader.models import Trader
 
 
-def get_token_name():
-    binance_url = "https://api.binance.com/api/v3/ticker/price"
-    response = rq.get(binance_url)
-    data = response.json()
-    return [token['symbol'][:-4] for token in data if token['symbol'].endswith('USDT')]
-
-
-def get_current_exchange_rate():
-    binance_url = "https://api.binance.com/api/v3/ticker/price"
-    response = rq.get(binance_url)
-    data = response.json()
-    return {token['symbol']: token['price'] for token in data}
-
-
-def get_klines(symbol_input: str):
-    if symbol_input == 'USDT':
-        return decimal.Decimal(0)
-
-    symbol = symbol_input + "USDT"
-    url = "https://api.binance.com/api/v3/klines"
-
-    params = {
-        'symbol': symbol,
-        'interval': '1m',
-        'limit': 61
-    }
-
-    response = rq.get(url, params=params)
-    data = response.json()
-    close_price_previous_hour = float(data[0][4])
-    close_current_price = float(data[60][4])
-
-    percentage_change = ((decimal.Decimal(close_current_price) - decimal.Decimal(
-        close_price_previous_hour)) / decimal.Decimal(close_price_previous_hour)) * decimal.Decimal(100)
-    return percentage_change
-
-
-CRYPTO_NAMES = get_token_name()
-
-
-def convert_to_usdt(data: dict, symbol: str, value: int):
-    if symbol in CRYPTO_NAMES:
-        symbol += "USDT"
-        return decimal.Decimal(data[symbol]) * value
-    elif symbol != 'USDT':
-        symbol = "USDT" + symbol
-        return decimal.Decimal(data[symbol]) / value
-    else:
-        return value
-
-
 @shared_task
-def check_task():
-    exchange_rate = get_current_exchange_rate()
+def calculate_avg_profit():
+    exchange_rate_pair = get_current_exchange_rate_pair()
+    exchange_rate = get_current_exchange_rate_usdt()
     strategies = Strategy.objects.all()
-    cryptos = [i['name'] for i in Crypto.objects.values('name').distinct()]
-    r = dict()
-    for crypto in cryptos:
-        r[crypto.upper()] = get_klines(crypto.upper())
+
     for strategy in strategies:
         avg_profit = 0
+        r = dict()
 
         all_cryptos_in_strategy = dict()
         all_usdt_in_profile = decimal.Decimal(0)
         all_cryptos = strategy.crypto.all()
         for crypto in all_cryptos:
-            crypto_in_usdt = convert_to_usdt(exchange_rate, crypto.name.upper(), crypto.total_value)
+            r[crypto.name.upper()] = get_percentage_change(crypto.name, crypto.exchange_rate, exchange_rate)
+            crypto_in_usdt = convert_to_usdt(exchange_rate_pair, crypto.name.upper(), crypto.total_value)
             all_cryptos_in_strategy[crypto.name.upper()] = crypto_in_usdt
             all_usdt_in_profile += crypto_in_usdt
 
@@ -84,8 +35,10 @@ def check_task():
 
         for crypto in all_cryptos:
             avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
-        strategy.avg_profit = avg_profit
-        strategy.save()
+        with trans.atomic():
+            strategy.refresh_from_db()
+            strategy.avg_profit = avg_profit + strategy.custom_avg_profit + strategy.current_custom_profit
+            strategy.save()
 
     for trader in Trader.objects.all():
         all_strategies = trader.strategies.all()
@@ -95,4 +48,27 @@ def check_task():
         trader.avg_profit_strategies = avg_profit / len(all_strategies)
         trader.save()
 
-    return 'done'
+    return 'done avg profit'
+
+
+@shared_task
+def change_custom_profit(pk: int, data: dict):
+    strategy = Strategy.objects.get(pk=pk)
+    n = math.ceil(data['minutes'] / 5)
+    percent = (decimal.Decimal(data['new_percentage_change_profit']) - strategy.custom_avg_profit) / n
+    current_percent = percent
+    while n > 0:
+        time.sleep(5 * 60)
+        with trans.atomic():
+            strategy.refresh_from_db()
+            strategy.current_custom_profit = current_percent
+            strategy.save()
+        current_percent += percent
+        n -= 1
+    with trans.atomic():
+        strategy.refresh_from_db()
+        strategy.current_custom_profit = 0
+        strategy.custom_avg_profit = data['new_percentage_change_profit']
+        strategy.save()
+
+    return 'done custom avg profit'
