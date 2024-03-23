@@ -60,6 +60,8 @@ class StrategySerializer(serializers.ModelSerializer):
     avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, required=False)
     users = StrategyUserSerializer(many=True, read_only=True)
+    custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
+    current_custom_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
 
     class Meta:
         model = Strategy

@@ -115,9 +115,11 @@ def get_all_available_strategies(request):
 @permission_classes([IsSuperUser])
 @api_view(['POST'])
 def change_avg_profit(request, pk: int):
-    get_object_or_404(Strategy, pk=pk)
+    strategy = get_object_or_404(Strategy, pk=pk)
     data = StrategyCustomProfitSerializer(data=request.data)
     if data.is_valid():
+        if strategy.current_custom_profit != 0:
+            return JsonResponse({"error": "already changing custom avg profit need to wait"}, status=400)
         change_custom_profit.delay(pk, data.data)
         return JsonResponse({"message": "sure"}, status=200)
     return JsonResponse(data.errors, status=400)

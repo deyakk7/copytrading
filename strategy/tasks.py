@@ -58,11 +58,11 @@ def change_custom_profit(pk: int, data: dict):
     percent = (decimal.Decimal(data['new_percentage_change_profit']) - strategy.custom_avg_profit) / n
     current_percent = percent
     while n > 0:
-        time.sleep(5 * 60)
         with trans.atomic():
             strategy.refresh_from_db()
             strategy.current_custom_profit = current_percent
             strategy.save()
+        time.sleep(5 * 60)
         current_percent += percent
         n -= 1
     with trans.atomic():
