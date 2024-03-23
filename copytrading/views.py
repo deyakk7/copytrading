@@ -13,7 +13,6 @@ User = get_user_model()
 
 
 @api_view(['GET'])
-@login_required()
 @permission_classes([IsSuperUser])
 def get_all_stats(request):
     obj = {}

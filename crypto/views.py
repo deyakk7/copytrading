@@ -17,14 +17,12 @@ class CryptoViewSet(ModelViewSet):
 
 
 @api_view(['GET'])
-@login_required()
 @permission_classes([IsSuperUser])
 def get_exchange_info(request):
     return JsonResponse(CRYPTO_NAMES[:100], safe=False)
 
 
 @api_view(['GET'])
-@login_required()
 @permission_classes([IsSuperUser])
 def get_all_cryptos_in_percentage(request):
     result = Crypto.objects.values('name').annotate(total=Sum('total_value'))

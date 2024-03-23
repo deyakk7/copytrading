@@ -34,7 +34,6 @@ class UserFollowedList(generics.ListAPIView):
 
 
 @api_view(['GET'])
-@login_required()
 @permission_classes([IsSuperUser])
 def avg_all_strategies_profit(request):
     pass

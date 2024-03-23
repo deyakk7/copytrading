@@ -155,4 +155,4 @@ SPECTACULAR_SETTINGS = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-LOGIN_URL = '/auth/token/login/'
+LOGIN_URL = '/v1/auth/token/login/'

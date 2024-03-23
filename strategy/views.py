@@ -37,6 +37,7 @@ class StrategyViewSet(ModelViewSet):
 
 class UsersCopiedListView(generics.ListAPIView):
     serializer_class = StrategyUserListSerializer
+    permission_classes(IsSuperUser, )
 
     def get_queryset(self):
         return UsersInStrategy.objects.order_by('-date_of_adding')[:10]
@@ -100,7 +101,6 @@ def remove_user_from_strategy(request, pk: int):
 
 
 @api_view(['GET'])
-@login_required()
 @permission_classes([IsSuperUser])
 def get_all_available_strategies(request):
     strategies = Strategy.objects.filter(trader=None)
@@ -111,7 +111,6 @@ def get_all_available_strategies(request):
 @extend_schema(
     request=StrategyCustomProfitSerializer,
 )
-@login_required()
 @permission_classes([IsSuperUser])
 @api_view(['POST'])
 def change_avg_profit(request, pk: int):
