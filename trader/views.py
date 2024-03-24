@@ -15,7 +15,7 @@ from .serializers import TraderSerializer, UsersFollowingsListSerializer
 class TraderViewSet(ModelViewSet):
     queryset = Trader.objects.all()
     serializer_class = TraderSerializer
-    permission_classes = (IsSuperUserOrReadOnly,)
+    # permission_classes = (IsSuperUserOrReadOnly,)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

@@ -21,4 +21,3 @@ class UserDepositViewSet(viewsets.ModelViewSet):
     queryset = UserDeposit.objects.all()
     serializer_class = UserDepositSerializer
     permission_classes = (IsSuperUser,)
-    # TODO who should have access to this endpoint?
