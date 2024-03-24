@@ -1,3 +1,5 @@
+import decimal
+
 from django.contrib.auth import get_user_model
 from django.db.models import Sum
 from django.http import JsonResponse
@@ -19,13 +21,10 @@ def ping(request):
 @permission_classes([IsSuperUser])
 def users_stats(request):
     obj = {}
-    total_money_in_users = User.objects.aggregate(total=Sum('wallet'))['total']
-    if total_money_in_users is None:
-        total_money_in_users = 0
-
+    total_users_balance = User.objects.aggregate(total=Sum('wallet'))['total']
     total_users_count = User.objects.filter(is_superuser=False).count()
 
-    obj['total_money_in_users'] = total_money_in_users
+    obj['total_users_balance'] = total_users_balance
     obj['total_users_count'] = total_users_count
 
     return JsonResponse(obj, safe=False)
