@@ -11,7 +11,5 @@ urlpatterns = [
     path('crypto/', include('crypto.urls')),
     path('transactions/', include('transaction.urls')),
     path('copytrading/', include('copytrading.urls')),
-    path('auth/', include('djoser.urls')),
-    path('auth/', include('djoser.urls.authtoken')),
     path('auth/', include('auth_service.urls')),
 ]

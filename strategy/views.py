@@ -49,6 +49,8 @@ class UsersCopiedListView(generics.ListAPIView):
 @api_view(['POST'])
 @login_required()
 def add_user_into_strategy(request, pk: int):
+    if request.user.is_superuser:
+        return JsonResponse({"error": "Superuser cannot copy strategies"}, status=400)
     input_data = request.data
     input_data['strategy'] = pk
     input_data['user'] = request.user.id
