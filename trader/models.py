@@ -2,6 +2,7 @@ import os
 
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -14,6 +15,14 @@ class Trader(models.Model):
     avg_profit_strategies = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     followers_count = models.IntegerField(default=0)
     copiers_count = models.IntegerField(default=0)
+
+    profit_to_loss_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    weekly_trades = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    avg_holding_time = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    roi_volatility = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    sharpe_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    sortino_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    last_traded_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
 
     def __str__(self):
         return f"{self.nickname}"

@@ -31,6 +31,13 @@ class TraderSerializer(serializers.ModelSerializer):
         instance.photo = validated_data.get('photo', instance.photo)
         instance.followers_count = validated_data.get('followers_count', instance.followers_count)
         instance.copiers_count = validated_data.get('copiers_count', instance.copiers_count)
+        instance.profit_to_loss_ratio = validated_data.get('profit_to_loss_ratio', instance.profit_to_loss_ratio)
+        instance.weekly_trades = validated_data.get('weekly_trades', instance.weekly_trades)
+        instance.avg_holding_time = validated_data.get('avg_holding_time', instance.avg_holding_time)
+        instance.roi_volatility = validated_data.get('roi_volatility', instance.roi_volatility)
+        instance.sharpe_ratio = validated_data.get('sharpe_ratio', instance.sharpe_ratio)
+        instance.sortino_ratio = validated_data.get('sortino_ratio', instance.sortino_ratio)
+        instance.last_traded_at = validated_data.get('last_traded_at', instance.last_traded_at)
 
         instance.save()
 

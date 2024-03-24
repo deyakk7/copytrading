@@ -2,13 +2,17 @@ from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from rest_framework import serializers
 
+from transaction.serializers import UserDepositSerializer
+
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    deposits = UserDepositSerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'nickname', 'date_of_registration', 'wallet')
+        fields = ('id', 'username', 'email', 'nickname', 'date_of_registration', 'wallet', 'deposits')
         extra_kwargs = {
             'date_of_registration': {'read_only': True},
         }

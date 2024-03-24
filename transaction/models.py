@@ -28,7 +28,7 @@ class Transfer(models.Model):
 
 
 class UserDeposit(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='deposits')
     amount = models.DecimalField(max_digits=30, decimal_places=2)
     time = models.DateTimeField(default=timezone.now)
     side = models.CharField(choices=USER_DEPOSIT_TYPES, max_length=10)
