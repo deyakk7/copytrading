@@ -54,7 +54,7 @@ def calculate_avg_profit():
 @shared_task
 def change_custom_profit(pk: int, data: dict):
     strategy = Strategy.objects.get(pk=pk)
-    n = math.ceil(data['minutes'] / 5)
+    n = int(data['minutes'])
     percent = (decimal.Decimal(data['new_percentage_change_profit']) - strategy.custom_avg_profit) / n
     current_percent = percent
     while n > 0:
@@ -62,7 +62,7 @@ def change_custom_profit(pk: int, data: dict):
             strategy.refresh_from_db()
             strategy.current_custom_profit = current_percent
             strategy.save()
-        time.sleep(5 * 60)
+        time.sleep(1 * 60)
         current_percent += percent
         n -= 1
     with trans.atomic():
