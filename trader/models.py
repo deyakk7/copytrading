@@ -13,7 +13,6 @@ class Trader(models.Model):
     date_of_registration = models.DateTimeField(auto_now_add=True)
     photo = models.ImageField(upload_to='trader_photos', blank=True)
     avg_profit_strategies = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    followers_count = models.IntegerField(default=0)
     copiers_count = models.IntegerField(default=0)
 
     profit_to_loss_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
@@ -35,15 +34,3 @@ class Trader(models.Model):
                 if os.path.isfile(old_photo.path):
                     os.remove(old_photo.path)
         super(Trader, self).save(*args, **kwargs)
-
-
-class UsersFollowsTrader(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followed_traders')
-    trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='followers')
-    date_of_following = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ('user', 'trader',)
-
-    def __str__(self):
-        return f"{self.user} follows {self.trader}"

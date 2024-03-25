@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from strategy.models import Strategy
 from strategy.serializers import StrategySerializer
-from trader.models import Trader, UsersFollowsTrader
+from trader.models import Trader
 
 
 class TraderSerializer(serializers.ModelSerializer):
@@ -25,12 +25,3 @@ class TraderSerializer(serializers.ModelSerializer):
         if strategies_id is not None:
             instance.strategies.set(Strategy.objects.filter(id__in=strategies_id))
         return instance
-
-
-class UsersFollowingsListSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.username')
-    trader = serializers.CharField(source='trader.nickname')
-
-    class Meta:
-        model = UsersFollowsTrader
-        fields = ['user', 'trader', 'date_of_following']
