@@ -1,10 +1,10 @@
 import decimal
-import math
 import time
-from django.db import transaction as trans
-from celery import shared_task
 
-from strategy.models import Strategy
+from celery import shared_task
+from django.db import transaction as trans
+
+from strategy.models import Strategy, StrategyProfitHistory
 from strategy.utils import get_current_exchange_rate_pair, convert_to_usdt, get_current_exchange_rate_usdt, \
     get_percentage_change
 from trader.models import Trader
@@ -49,6 +49,13 @@ def calculate_avg_profit():
         trader.save()
 
     return 'done avg profit'
+
+
+@shared_task
+def saving_avg_profit():
+    for strategy in Strategy.objects.all():
+        StrategyProfitHistory.objects.create(strategy=strategy, value=strategy.avg_profit)
+    return "saving avg_profit"
 
 
 @shared_task

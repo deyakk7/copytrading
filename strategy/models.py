@@ -23,6 +23,12 @@ class Strategy(models.Model):
         return self.name
 
 
+class StrategyProfitHistory(models.Model):
+    strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='profits')
+    value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    date = models.DateTimeField(auto_now_add=True)
+
+
 class UsersInStrategy(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='strategies')
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='users')

@@ -14,6 +14,7 @@ class Trader(models.Model):
     photo = models.ImageField(upload_to='trader_photos', blank=True)
     avg_profit_strategies = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     copiers_count = models.IntegerField(default=0)
+    visible = models.BooleanField(default=False)
 
     profit_to_loss_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     weekly_trades = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)

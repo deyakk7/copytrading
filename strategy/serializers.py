@@ -66,7 +66,13 @@ class StrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
-                  'total_deposited', 'users', 'total_copiers', 'max_users', 'custom_avg_profit', 'current_custom_profit']
+                  'total_deposited', 'users', 'total_copiers', 'max_users', 'custom_avg_profit',
+                  'current_custom_profit']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['profits'] = instance.profits.all().order_by('-date').values_list('value', flat=True)
+        return data
 
     def create(self, validated_data):
         cryptos_data = validated_data.pop('crypto', None)
