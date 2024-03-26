@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.utils import timezone
 
 from trader.models import Trader
 
@@ -34,6 +35,16 @@ class UsersInStrategy(models.Model):
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='users')
     value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     date_of_adding = models.DateTimeField(auto_now_add=True)
+    profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
 
     class Meta:
         unique_together = ('user', 'strategy',)
+
+
+class UserOutStrategy(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='out_strategies')
+    strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='out_users')
+    value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    date_of_adding = models.DateTimeField(default=timezone.now)
+    date_of_out = models.DateTimeField(auto_now_add=True)
+    profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)

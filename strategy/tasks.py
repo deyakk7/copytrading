@@ -45,7 +45,10 @@ def calculate_avg_profit():
         avg_profit = 0
         for strategy in all_strategies:
             avg_profit += strategy.avg_profit
-        trader.avg_profit_strategies = avg_profit / len(all_strategies)
+        try:
+            trader.avg_profit_strategies = avg_profit / len(all_strategies)
+        except ZeroDivisionError:
+            trader.avg_profit_strategies = 0
         trader.save()
 
     return 'done avg profit'

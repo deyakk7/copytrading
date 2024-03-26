@@ -44,13 +44,16 @@ def get_percentage_change(symbol_input: str, old_rate: decimal.Decimal, exchange
     if symbol_input == 'USDT':
         return decimal.Decimal(0)
     current_price = exchange_rate[symbol_input]
-
-    percentage_change = ((decimal.Decimal(current_price) - decimal.Decimal(
-        old_rate)) / decimal.Decimal(old_rate)) * decimal.Decimal(100)
+    try:
+        percentage_change = ((decimal.Decimal(current_price) - decimal.Decimal(
+            old_rate)) / decimal.Decimal(old_rate)) * decimal.Decimal(100)
+    except ZeroDivisionError:
+        percentage_change = decimal.Decimal(0)
     return percentage_change
 
 
 CRYPTO_NAMES = get_token_name()
+CRYPTO_NAMES_TUPLE = [(name, name) for name in CRYPTO_NAMES]
 
 
 def convert_to_usdt(data: dict, symbol: str, value: int):

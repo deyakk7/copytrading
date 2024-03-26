@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from crypto.models import Crypto
+from crypto.models import Crypto, CryptoInUser
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy
 from strategy.utils import get_current_exchange_rate_usdt
@@ -10,7 +10,7 @@ from trader.models import Trader
 class StrategyUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        fields = ['user', 'value', 'strategy', 'date_of_adding']
+        fields = ['user', 'value', 'profit', 'strategy', 'date_of_adding']
 
     def validate(self, data):
         super().validate(data)
@@ -99,13 +99,37 @@ class StrategySerializer(serializers.ModelSerializer):
 
         if cryptos_data is None:
             return instance
+        exchange_rate = get_current_exchange_rate_usdt()
         keep_cryptos = []
         for crypto_data in cryptos_data:
-            c = Crypto.objects.create(strategy=instance, **crypto_data)
+            crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
+            if crypto:
+                crypto.total_value = crypto_data.get('total_value', crypto.total_value)
+                crypto.save()
+                keep_cryptos.append(crypto.id)
+                continue
+            c = Crypto.objects.create(strategy=instance, exchange_rate=exchange_rate[crypto_data['name']],
+                                      **crypto_data)
             keep_cryptos.append(c.id)
 
         for crypto in instance.crypto.all():
             if crypto.id not in keep_cryptos:
                 crypto.delete()
+        instance.save()
+
+        crypto_in_strategy = [c.name for c in instance.crypto.all()]
+
+        users = instance.users.all()
+
+        for user_in_strategy in users:
+            for crypto in user_in_strategy.crypto.all():
+                print(crypto.name)
+                if crypto.name not in crypto_in_strategy:
+                    crypto.delete()
+                    continue
+            for crypto in crypto_in_strategy:
+                if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
+                    CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
+                                                exchange_rate=exchange_rate[crypto])
 
         return instance

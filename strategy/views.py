@@ -1,3 +1,4 @@
+import decimal
 import random
 
 from django.contrib.auth.decorators import login_required
@@ -10,12 +11,12 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from crypto.models import TOKENS_PAIR
+from crypto.models import TOKENS_PAIR, CryptoInUser
 from strategy.models import Strategy, UsersInStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer
 from strategy.tasks import change_custom_profit
-from strategy.utils import get_current_exchange_rate_pair
+from strategy.utils import get_current_exchange_rate_pair, get_current_exchange_rate_usdt
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import Transaction
 from transaction.serializers import TransactionSerializer
@@ -60,19 +61,28 @@ def add_user_into_strategy(request, pk: int):
         return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
     if strategy.total_copiers >= strategy.max_users:
         return JsonResponse({"error": "This strategy is full"}, status=400, safe=False)
-    if wallet < strategy.min_deposit or wallet < input_data['value']:
+    if wallet < strategy.min_deposit or wallet < decimal.Decimal(input_data['value']):
         return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
         with transaction.atomic():
-            strategy.total_deposited += input_data['value']
-            request.user.wallet -= input_data['value']
+            strategy.total_deposited += decimal.Decimal(input_data['value'])
+            request.user.wallet -= decimal.Decimal(input_data['value'])
             strategy.total_copiers = strategy.users.count() + 1
             strategy.trader.copiers_count += 1
             strategy.save()
             request.user.save()
-        data.save()
+        obj = data.save()
+        crypto_in_strategy = obj.strategy.crypto.all()
+        exchange_rate = get_current_exchange_rate_usdt()
+        for crypto in crypto_in_strategy:
+            CryptoInUser.objects.create(
+                name=crypto.name,
+                exchange_rate=exchange_rate[crypto.name],
+                user_in_strategy=obj
+            )
+
         return JsonResponse(data.data, status=201)
 
     return JsonResponse(data.errors, status=400)
