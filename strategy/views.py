@@ -4,6 +4,7 @@ import random
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
@@ -12,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import TOKENS_PAIR, CryptoInUser
-from strategy.models import Strategy, UsersInStrategy
+from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer
 from strategy.tasks import change_custom_profit
@@ -93,8 +94,8 @@ def add_user_into_strategy(request, pk: int):
 def remove_user_from_strategy(request, pk: int):
     data = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
     if data is not None:
+        strategy = data.strategy
         with transaction.atomic():
-            strategy = data.strategy
             strategy.total_deposited -= data.value
             strategy.total_copiers -= strategy.users.count()
             strategy.trader.copiers_count -= 1
@@ -102,6 +103,15 @@ def remove_user_from_strategy(request, pk: int):
                 strategy.trader.copiers_count = 0
             request.user.wallet += data.value
             request.user.save()
+            UserOutStrategy.objects.create(
+                user=data.user,
+                strategy=data.strategy,
+                value=data.value,
+                profit=data.profit,
+                date_of_adding=data.date_of_adding,
+                date_of_out=timezone.now()
+            )
+
             data.delete()
             strategy.save()
         transactions = random_black_box(strategy)
