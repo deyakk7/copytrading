@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from crypto.models import Crypto, CryptoInUser
 from crypto.serializers import CryptoSerializer
-from strategy.models import Strategy, UsersInStrategy
+from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
 
@@ -10,7 +10,7 @@ from trader.models import Trader
 class StrategyUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        fields = ['user', 'value', 'profit', 'strategy', 'date_of_adding']
+        fields = ['user', 'value', 'profit', 'strategy', 'date_of_adding', 'custom_profit', 'current_custom_profit']
 
     def validate(self, data):
         super().validate(data)
@@ -42,6 +42,12 @@ class StrategyCustomProfitSerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
         fields = ['custom_avg_profit', 'new_percentage_change_profit', 'minutes']
+
+
+class UserOutStrategySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserOutStrategy
+        fields = '__all__'
 
 
 class StrategyUserListSerializer(serializers.ModelSerializer):

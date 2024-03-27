@@ -36,6 +36,8 @@ class UsersInStrategy(models.Model):
     value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     date_of_adding = models.DateTimeField(auto_now_add=True)
     profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    custom_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    current_custom_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
 
     class Meta:
         unique_together = ('user', 'strategy',)

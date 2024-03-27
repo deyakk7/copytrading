@@ -15,6 +15,7 @@ class Crypto(models.Model):
 
 class CryptoInUser(models.Model):
     name = models.CharField(max_length=30, choices=CRYPTO_NAMES_TUPLE)
+    total_value = models.DecimalField(max_digits=30, decimal_places=7) # TODO FIX THIS
     exchange_rate = models.DecimalField(max_digits=30, decimal_places=7, default=0)
 
     user_in_strategy = models.ForeignKey(UsersInStrategy, on_delete=models.CASCADE, related_name='crypto')

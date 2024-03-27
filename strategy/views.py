@@ -15,7 +15,7 @@ from rest_framework.viewsets import ModelViewSet
 from crypto.models import TOKENS_PAIR, CryptoInUser
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
-    UserCopingStrategySerializer, StrategyCustomProfitSerializer
+    UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
 from strategy.tasks import change_custom_profit
 from strategy.utils import get_current_exchange_rate_pair, get_current_exchange_rate_usdt
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
@@ -45,6 +45,14 @@ class UsersCopiedListView(generics.ListAPIView):
         return UsersInStrategy.objects.order_by('-date_of_adding')[:10]
 
 
+class UsersOutStrategyListView(generics.ListAPIView):
+    serializer_class = UserOutStrategySerializer
+    permission_classes(IsSuperUser, )
+
+    def get_queryset(self):
+        return UserOutStrategy.objects.order_by('-date_of_out')[:10]
+
+
 @extend_schema(
     request=UserCopingStrategySerializer,
 )
@@ -64,6 +72,8 @@ def add_user_into_strategy(request, pk: int):
         return JsonResponse({"error": "This strategy is full"}, status=400, safe=False)
     if wallet < strategy.min_deposit or wallet < decimal.Decimal(input_data['value']):
         return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
+    input_data['current_custom_profit'] = strategy.current_custom_profit
+    input_data['custom_profit'] = strategy.custom_avg_profit
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
@@ -81,6 +91,7 @@ def add_user_into_strategy(request, pk: int):
             CryptoInUser.objects.create(
                 name=crypto.name,
                 exchange_rate=exchange_rate[crypto.name],
+                total_value=crypto.total_value,
                 user_in_strategy=obj
             )
 
@@ -97,11 +108,11 @@ def remove_user_from_strategy(request, pk: int):
         strategy = data.strategy
         with transaction.atomic():
             strategy.total_deposited -= data.value
-            strategy.total_copiers -= strategy.users.count()
+            strategy.total_copiers = strategy.users.count()
             strategy.trader.copiers_count -= 1
             if strategy.trader.copiers_count == 0:
                 strategy.trader.copiers_count = 0
-            request.user.wallet += data.value
+            request.user.wallet += data.value + data.profit * (data.value / decimal.Decimal(100))
             request.user.save()
             UserOutStrategy.objects.create(
                 user=data.user,
