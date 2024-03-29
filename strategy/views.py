@@ -131,12 +131,12 @@ def remove_user_from_strategy(request, pk: int):
     return JsonResponse({"error": "User not found in strategy"}, status=404)
 
 
-@api_view(['GET'])
-@permission_classes([IsSuperUser])
-def get_all_available_strategies(request):
-    strategies = Strategy.objects.filter(trader=None)
-    data = StrategySerializer(strategies, many=True).data
-    return JsonResponse(data, safe=False)
+class StrategyAvailableListView(generics.ListAPIView):
+    serializer_class = StrategySerializer
+    permission_classes(IsSuperUser, )
+
+    def get_queryset(self):
+        return Strategy.objects.filter(trader=None)
 
 
 @extend_schema(
