@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -35,6 +35,11 @@ class StrategyViewSet(ModelViewSet):
             return JsonResponse({'error': 'You cannot delete this strategy because it has users.'})
         self.perform_destroy(instance)
         return Response(status=204)
+
+    @action(detail=False, methods=['get'])
+    def my(self, request, *args, **kwargs):
+        my_strategies = UsersInStrategy.objects.filter(user=request.user).values_list('strategy', flat=True).distinct()
+        return JsonResponse({'my_copied_strategies_id': list(my_strategies)}, safe=False)
 
 
 class UsersCopiedListView(generics.ListAPIView):

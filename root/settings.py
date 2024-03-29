@@ -143,6 +143,7 @@ DJOSER = {
     'SERIALIZERS': {
         'user': 'auth_service.serializers.UserSerializer',
         'user_create': 'auth_service.serializers.UserRegistrationSerializer',
+        'current_user': 'auth_service.serializers.UserSerializer',
     },
 }
 

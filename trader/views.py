@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
@@ -20,3 +21,9 @@ class TraderViewSet(ModelViewSet):
             return JsonResponse({'error': 'You cannot delete this trader because it has users.'})
         self.perform_destroy(instance)
         return Response(status=204)
+
+    @action(detail=False, methods=['get'])
+    def my(self, request, *args, **kwargs):
+        my_traders = UsersInStrategy.objects.filter(user=request.user).values_list('strategy__trader',
+                                                                                   flat=True).distinct()
+        return JsonResponse({'my_traders_copied_id': list(my_traders)}, safe=False)

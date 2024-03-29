@@ -50,6 +50,12 @@ class UserOutStrategySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class UserInStrategySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsersInStrategy
+        fields = '__all__'
+
+
 class StrategyUserListSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     trader = serializers.CharField(source='strategy.trader.nickname')
