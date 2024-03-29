@@ -1,6 +1,5 @@
-import decimal
-
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import JsonResponse
 from djoser.views import UserViewSet as BaseUserViewSet
@@ -22,6 +21,13 @@ def ping(request):
     if request.user.is_authenticated:
         return JsonResponse({'message': 'good'}, status=200, safe=False)
     return JsonResponse({'message': 'Not authenticated'}, status=401, safe=False)
+
+
+@api_view(['GET'])
+def is_superuser(request):
+    if request.user.is_authenticated:
+        return JsonResponse({'is_admin': request.user.is_superuser}, safe=False)
+    return JsonResponse({'error': "Not authenticated"}, status=401, safe=False)
 
 
 @api_view(['GET'])
