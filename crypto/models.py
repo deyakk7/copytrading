@@ -11,12 +11,14 @@ class Crypto(models.Model):
     deposited_value = models.DecimalField(max_digits=30, decimal_places=7, default=0)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='crypto')
     exchange_rate = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    side = models.CharField(max_length=10, choices=(('short', 'short'), ('long', 'long')), default='long')
 
 
 class CryptoInUser(models.Model):
     name = models.CharField(max_length=30, choices=CRYPTO_NAMES_TUPLE)
-    total_value = models.DecimalField(max_digits=30, decimal_places=7) # TODO FIX THIS
+    total_value = models.DecimalField(max_digits=30, decimal_places=7)
     exchange_rate = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    side = models.CharField(max_length=10, choices=(('short', 'short'), ('long', 'long')), default='long')
 
     user_in_strategy = models.ForeignKey(UsersInStrategy, on_delete=models.CASCADE, related_name='crypto')
 

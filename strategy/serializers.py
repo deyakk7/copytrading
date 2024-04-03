@@ -117,6 +117,7 @@ class StrategySerializer(serializers.ModelSerializer):
             crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
             if crypto:
                 crypto.total_value = crypto_data.get('total_value', crypto.total_value)
+                crypto.side = crypto_data.get('side', crypto.side)
                 crypto.save()
                 keep_cryptos.append(crypto.id)
                 continue

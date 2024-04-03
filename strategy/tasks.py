@@ -34,7 +34,10 @@ def calculate_avg_profit():
              all_cryptos_in_strategy.items()}
 
         for crypto in all_cryptos:
-            avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
+            if crypto.side == 'long':
+                avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
+            else:
+                avg_profit -= (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
         with trans.atomic():
             strategy.refresh_from_db()
             strategy.avg_profit = avg_profit + strategy.custom_avg_profit + strategy.current_custom_profit
@@ -67,7 +70,10 @@ def calculate_avg_profit():
              name, value in
              all_cryptos_in_strategy.items()}
         for crypto in user_in_strategy.crypto.all():
-            avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
+            if crypto.side == 'long':
+                avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
+            else:
+                avg_profit -= (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
 
         with trans.atomic():
             strategy = user_in_strategy.strategy
