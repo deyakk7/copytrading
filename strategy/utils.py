@@ -52,7 +52,7 @@ def get_percentage_change(symbol_input: str, old_rate: decimal.Decimal, exchange
     return percentage_change
 
 
-CRYPTO_NAMES = get_token_name()
+CRYPTO_NAMES = get_token_name() + ['USDT']
 CRYPTO_NAMES_TUPLE = [(name, name) for name in CRYPTO_NAMES]
 
 
@@ -71,4 +71,6 @@ def get_current_exchange_rate_usdt():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    return {token['symbol'][:-4]: token['price'] for token in data if token['symbol'].endswith('USDT')}
+    result = {token['symbol'][:-4]: token['price'] for token in data if token['symbol'].endswith('USDT')}
+    result['USDT'] = 1
+    return result

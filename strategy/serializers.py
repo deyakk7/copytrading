@@ -75,7 +75,7 @@ class StrategySerializer(serializers.ModelSerializer):
     total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     users = StrategyUserSerializer(many=True, read_only=True)
     custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
-    total_copiers = serializers.IntegerField()
+    total_copiers = serializers.IntegerField(required=False)
 
     class Meta:
         model = Strategy
@@ -95,8 +95,24 @@ class StrategySerializer(serializers.ModelSerializer):
         if cryptos_data is None:
             return strategy
         exchange_rate = get_current_exchange_rate_usdt()
+
+        sum_of_percent = 0
         for crypto_data in cryptos_data:
-            Crypto.objects.create(strategy=strategy, exchange_rate=exchange_rate[crypto_data['name']], **crypto_data)
+            if crypto_data['name'] == 'USDT':
+                continue
+            sum_of_percent += crypto_data['total_value']
+
+        if sum_of_percent > 100:
+            raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
+
+        usdt_value = 100 - sum_of_percent
+        with trans.atomic():
+            if usdt_value != 0:
+                Crypto.objects.create(strategy=strategy, exchange_rate=1, name='USDT', total_value=usdt_value,
+                                      side=None)
+            for crypto_data in cryptos_data:
+                Crypto.objects.create(strategy=strategy, exchange_rate=exchange_rate[crypto_data['name']],
+                                      **crypto_data)
         return strategy
 
     def update(self, instance, validated_data):
@@ -126,36 +142,64 @@ class StrategySerializer(serializers.ModelSerializer):
             return instance
         exchange_rate = get_current_exchange_rate_usdt()
         keep_cryptos = []
-        for crypto_data in cryptos_data:
-            crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
-            if crypto:
-                crypto.total_value = crypto_data.get('total_value', crypto.total_value)
-                crypto.side = crypto_data.get('side', crypto.side)
-                crypto.save()
-                keep_cryptos.append(crypto.id)
-                continue
-            c = Crypto.objects.create(strategy=instance, exchange_rate=exchange_rate[crypto_data['name']],
-                                      **crypto_data)
-            keep_cryptos.append(c.id)
 
-        for crypto in instance.crypto.all():
-            if crypto.id not in keep_cryptos:
-                crypto.delete()
-        instance.save()
-
-        crypto_in_strategy = [c.name for c in instance.crypto.all()]
-
-        users = instance.users.all()
-
-        for user_in_strategy in users:
-            for crypto in user_in_strategy.crypto.all():
-                print(crypto.name)
-                if crypto.name not in crypto_in_strategy:
-                    crypto.delete()
+        sum_of_percent = 0
+        with trans.atomic():
+            for crypto_data in cryptos_data:
+                if crypto_data['name'] == 'USDT':
                     continue
-            for crypto in crypto_in_strategy:
-                if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
-                    CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
-                                                exchange_rate=exchange_rate[crypto])
+                crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
+                if crypto:
+                    crypto.total_value = crypto_data.get('total_value', crypto.total_value)
+                    crypto.side = crypto_data.get('side', crypto.side)
+                    crypto.save()
+                    sum_of_percent += crypto.total_value
+                    keep_cryptos.append(crypto.id)
+                    continue
+                c = Crypto.objects.create(strategy=instance, exchange_rate=exchange_rate[crypto_data['name']],
+                                          **crypto_data)
+                sum_of_percent += c.total_value
+                keep_cryptos.append(c.id)
+            usdt_crypto = instance.crypto.filter(name='USDT', strategy=instance).first()
+            if sum_of_percent > 100:
+                trans.set_rollback(True)
+                raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
+            needed_percentage = 100 - sum_of_percent
+            if needed_percentage == 0 and usdt_crypto:
+                usdt_crypto.delete()
+            elif needed_percentage and usdt_crypto:
+                usdt_crypto.total_value = needed_percentage
+                usdt_crypto.save()
+                keep_cryptos.append(usdt_crypto.id)
+            else:
+                c = Crypto.objects.create(strategy=instance, exchange_rate=1,
+                                          name="USDT", total_value=needed_percentage, side=None)
+                keep_cryptos.append(c.id)
+
+            for crypto in instance.crypto.all():
+                if crypto.id not in keep_cryptos:
+                    crypto.delete()
+            instance.save()
+
+            crypto_in_strategy = [c.name for c in instance.crypto.all()]
+            crypto_in_strategy_with_percentage = {c.name: c.total_value for c in instance.crypto.all()}
+
+            users = instance.users.all()
+
+            # for each record in every user
+            for user_in_strategy in users:
+                # for each crypto in this record
+                for crypto in user_in_strategy.crypto.all():
+                    # if this crypto isn't in strategy
+                    if crypto.name not in crypto_in_strategy:
+                        crypto.delete()
+                        continue
+                # for each crypto in strategy
+                for crypto in crypto_in_strategy:
+                    # if this crypto not in one of user so create it
+                    if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
+                        CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
+                                                    exchange_rate=exchange_rate[crypto],
+                                                    total_value=crypto_in_strategy_with_percentage[crypto])
 
         return instance

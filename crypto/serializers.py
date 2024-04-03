@@ -7,4 +7,4 @@ class CryptoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Crypto
         exclude = ('strategy', 'id')
-        read_only_fields = ('id', 'deposited_value', 'exchange_rate')
+        read_only_fields = ('id', 'exchange_rate')

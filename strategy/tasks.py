@@ -5,7 +5,7 @@ from celery import shared_task
 from django.db import transaction as trans
 
 from strategy.models import Strategy, StrategyProfitHistory, UsersInStrategy
-from strategy.utils import get_current_exchange_rate_pair, convert_to_usdt, get_current_exchange_rate_usdt, \
+from strategy.utils import get_current_exchange_rate_pair, get_current_exchange_rate_usdt, \
     get_percentage_change
 from trader.models import Trader
 
@@ -19,19 +19,12 @@ def calculate_avg_profit():
     for strategy in strategies:
         avg_profit = 0
         r = dict()
+        w = dict()
 
-        all_cryptos_in_strategy = dict()
-        all_usdt_in_profile = decimal.Decimal(0)
         all_cryptos = strategy.crypto.all()
         for crypto in all_cryptos:
             r[crypto.name.upper()] = get_percentage_change(crypto.name, crypto.exchange_rate, exchange_rate)
-            crypto_in_usdt = convert_to_usdt(exchange_rate_pair, crypto.name.upper(), crypto.total_value)
-            all_cryptos_in_strategy[crypto.name.upper()] = crypto_in_usdt
-            all_usdt_in_profile += crypto_in_usdt
-
-        w = {name.upper(): decimal.Decimal(value) / decimal.Decimal(all_usdt_in_profile) * decimal.Decimal(100) for
-             name, value in
-             all_cryptos_in_strategy.items()}
+            w[crypto.name] = crypto.total_value
 
         for crypto in all_cryptos:
             if crypto.side == 'long':
@@ -57,18 +50,12 @@ def calculate_avg_profit():
     for user_in_strategy in UsersInStrategy.objects.all():
         avg_profit = 0
         r = dict()
+        w = dict()
 
-        all_cryptos_in_strategy = dict()
-        all_usdt_in_user = decimal.Decimal(0)
         for crypto in user_in_strategy.crypto.all():
             r[crypto.name.upper()] = get_percentage_change(crypto.name, crypto.exchange_rate, exchange_rate)
-            crypto_in_usdt = convert_to_usdt(exchange_rate_pair, crypto.name.upper(), crypto.total_value)
-            all_cryptos_in_strategy[crypto.name.upper()] = crypto_in_usdt
-            all_usdt_in_user += crypto_in_usdt
+            w[crypto.name] = crypto.total_value
 
-        w = {name.upper(): decimal.Decimal(value) / decimal.Decimal(all_usdt_in_user) * decimal.Decimal(100) for
-             name, value in
-             all_cryptos_in_strategy.items()}
         for crypto in user_in_strategy.crypto.all():
             if crypto.side == 'long':
                 avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
@@ -79,7 +66,7 @@ def calculate_avg_profit():
             strategy = user_in_strategy.strategy
             user_in_strategy.strategy.refresh_from_db()
             user_in_strategy.profit = avg_profit + strategy.custom_avg_profit + strategy.current_custom_profit - \
-                                      user_in_strategy.custom_profit - user_in_strategy.current_custom_profit
+                user_in_strategy.custom_profit - user_in_strategy.current_custom_profit
             user_in_strategy.save()
 
     return 'done avg profit for strategies, traders, users_in_strategy'
