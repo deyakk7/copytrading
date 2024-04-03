@@ -27,7 +27,7 @@ class CryptoInUser(models.Model):
     user_in_strategy = models.ForeignKey(UsersInStrategy, on_delete=models.CASCADE, related_name='crypto')
 
     def __str__(self):
-        return f"{self.name} - {self.exchange_rate}"
+        return f"{self.name} - {self.exchange_rate} -- {self.id}"
 
 
 def get_tokens_pair():

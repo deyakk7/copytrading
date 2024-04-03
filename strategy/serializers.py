@@ -191,6 +191,8 @@ class StrategySerializer(serializers.ModelSerializer):
                     if crypto.name not in crypto_in_strategy:
                         crypto.delete()
                         continue
+                    crypto.total_value = crypto_in_strategy_with_percentage[crypto.name]
+                    crypto.save()
                 for crypto in crypto_in_strategy:
                     if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
                         CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
