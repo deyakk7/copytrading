@@ -186,17 +186,12 @@ class StrategySerializer(serializers.ModelSerializer):
 
             users = instance.users.all()
 
-            # for each record in every user
             for user_in_strategy in users:
-                # for each crypto in this record
                 for crypto in user_in_strategy.crypto.all():
-                    # if this crypto isn't in strategy
                     if crypto.name not in crypto_in_strategy:
                         crypto.delete()
                         continue
-                # for each crypto in strategy
                 for crypto in crypto_in_strategy:
-                    # if this crypto not in one of user so create it
                     if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
                         CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
                                                     exchange_rate=exchange_rate[crypto],
