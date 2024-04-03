@@ -1,3 +1,5 @@
+from django.db import transaction as trans
+from django.db.models import Sum
 from rest_framework import serializers
 
 from crypto.models import Crypto, CryptoInUser
@@ -73,7 +75,7 @@ class StrategySerializer(serializers.ModelSerializer):
     total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     users = StrategyUserSerializer(many=True, read_only=True)
     custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
-    total_copiers = serializers.IntegerField(read_only=True)
+    total_copiers = serializers.IntegerField()
 
     class Meta:
         model = Strategy
@@ -106,6 +108,17 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
         instance.max_users = validated_data.get('max_users', instance.max_users)
         instance.custom_avg_profit = validated_data.get('custom_avg_profit', instance.custom_avg_profit)
+        if validated_data.get('total_copiers') is not None:
+            if validated_data.get('total_copiers') > instance.max_users:
+                raise serializers.ValidationError({'error': 'Total copiers must be less than max users'})
+            if instance.trader:
+                with trans.atomic():
+                    instance.trader.copiers_count = \
+                        Strategy.objects.filter(trader=instance.trader).aggregate(
+                            total_copiers_sum=Sum('total_copiers'))[
+                            'total_copiers_sum'] - instance.total_copiers + validated_data.get('total_copiers')
+                    instance.trader.save()
+                    instance.total_copiers = validated_data.get('total_copiers', instance.total_copiers)
 
         instance.save()
 
