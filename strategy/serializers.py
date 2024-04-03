@@ -182,21 +182,29 @@ class StrategySerializer(serializers.ModelSerializer):
             instance.save()
 
             crypto_in_strategy = [c.name for c in instance.crypto.all()]
-            crypto_in_strategy_with_percentage = {c.name: c.total_value for c in instance.crypto.all()}
+            crypto_in_strategy_with_percentage = {c.name: c for c in instance.crypto.all()}
 
             users = instance.users.all()
 
-            for user_in_strategy in users:
-                for crypto in user_in_strategy.crypto.all():
-                    if crypto.name not in crypto_in_strategy:
+            for user in users:
+                keep_crypto_users = []
+                for crypto in user.crypto.all():
+                    if crypto.name in crypto_in_strategy:
+                        crypto.total_value = crypto_in_strategy_with_percentage[crypto.name].total_value
+                        crypto.side = crypto_in_strategy_with_percentage[crypto.name].side
+                        crypto.save()
+                        keep_crypto_users.append(crypto_in_strategy_with_percentage[crypto.name].id)
+                    else:
                         crypto.delete()
-                        continue
-                    crypto.total_value = crypto_in_strategy_with_percentage[crypto.name]
-                    crypto.save()
-                for crypto in crypto_in_strategy:
-                    if crypto not in [c.name for c in user_in_strategy.crypto.all()]:
-                        CryptoInUser.objects.create(user_in_strategy=user_in_strategy, name=crypto,
-                                                    exchange_rate=exchange_rate[crypto],
-                                                    total_value=crypto_in_strategy_with_percentage[crypto])
+
+                needed_crypto_from_strategy = instance.crypto.exclude(id__in=keep_crypto_users)
+                for i in needed_crypto_from_strategy:
+                    CryptoInUser.objects.create(
+                        user_in_strategy=user,
+                        name=i.name,
+                        total_value=i.total_value,
+                        exchange_rate=exchange_rate[i.name],
+                        side=i.side
+                    )
 
         return instance

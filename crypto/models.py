@@ -15,6 +15,9 @@ class Crypto(models.Model):
     side = models.CharField(max_length=10, choices=(('short', 'short'), ('long', 'long')), default='long', null=True,
                             blank=True)
 
+    def __str__(self):
+        return f"(ST) {self.name} - {self.exchange_rate} -- {self.id}"
+
 
 class CryptoInUser(models.Model):
     name = models.CharField(max_length=30, choices=CRYPTO_NAMES_TUPLE)
