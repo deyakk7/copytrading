@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import JsonResponse
 from djoser.views import UserViewSet as BaseUserViewSet
@@ -37,7 +36,7 @@ def users_stats(request):
     total_users_balance = User.objects.filter(is_superuser=False).aggregate(total=Sum('wallet'))['total']
     total_users_count = User.objects.filter(is_superuser=False).count()
 
-    obj['total_users_balance'] = total_users_balance
+    obj['total_users_balance'] = round(total_users_balance, 2)
     obj['total_users_count'] = total_users_count
 
     return JsonResponse(obj, safe=False)

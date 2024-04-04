@@ -27,12 +27,7 @@ def get_exchange_info(request):
 def get_all_cryptos_in_percentage(request):
     result = Crypto.objects.values('name').annotate(total=Sum('total_value'))
     result_dict = {item['name']: item['total'] for item in result}
-    exchange_rate = get_current_exchange_rate_pair()
-    summary = 0
-    for key, value in result_dict.items():
-        result_in_usdt = convert_to_usdt(exchange_rate, key, value)
-        summary += result_in_usdt
-        result_dict[key] = result_in_usdt
+    summary = sum(result_dict.values())
     for key, value in result_dict.items():
         result_dict[key] = round(value / summary * 100, 4)
 
