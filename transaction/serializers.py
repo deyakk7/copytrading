@@ -6,8 +6,8 @@ from transaction.models import Transaction, Transfer, UserDeposit
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = '__all__'
-        read_only_fields = ('id',)
+        exclude = ('id', 'trader')
+        read_only_fields = ('id', 'trader')
 
 
 class TransferSerializer(serializers.ModelSerializer):

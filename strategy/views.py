@@ -1,5 +1,4 @@
 import decimal
-import random
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -12,16 +11,13 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from crypto.models import TOKENS_PAIR, CryptoInUser
+from crypto.models import CryptoInUser
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
 from strategy.tasks import change_custom_profit
-from strategy.utils import get_current_exchange_rate_pair, get_current_exchange_rate_usdt
+from strategy.utils import get_current_exchange_rate_usdt
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
-from transaction.models import Transaction
-from transaction.serializers import TransactionSerializer
-from transaction.views import random_black_box
 
 
 class StrategyViewSet(ModelViewSet):
@@ -132,9 +128,8 @@ def remove_user_from_strategy(request, pk: int):
 
             data.delete()
             strategy.save()
-        transactions = random_black_box(strategy)
 
-        return Response(transactions, status=200)
+        return JsonResponse({"message": "You have left the strategy successfully"}, status=200)
     return JsonResponse({"error": "User not found in strategy"}, status=404)
 
 

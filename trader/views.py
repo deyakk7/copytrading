@@ -1,9 +1,11 @@
 from django.http import JsonResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from strategy.models import UsersInStrategy
+from transaction.serializers import TransactionSerializer
 from .models import Trader
 from .permissions import IsSuperUserOrReadOnly
 from .serializers import TraderSerializer
@@ -27,3 +29,13 @@ class TraderViewSet(ModelViewSet):
         my_traders = UsersInStrategy.objects.filter(user=request.user).values_list('strategy__trader',
                                                                                    flat=True).distinct()
         return JsonResponse({'my_traders_copied_id': list(my_traders)}, safe=False)
+
+    @extend_schema(
+        responses=TransactionSerializer(many=True),
+    )
+    @action(detail=True, methods=['get'])
+    def transactions(self, request, *args, **kwargs):
+        trader = self.get_object()
+        transactions = trader.transaction_set.all().order_by('-close_time')
+        serializer = TransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
