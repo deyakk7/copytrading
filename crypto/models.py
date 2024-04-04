@@ -33,6 +33,15 @@ class CryptoInUser(models.Model):
         return f"{self.name} - {self.exchange_rate} -- {self.id}"
 
 
+class CryptoPriceHistory24h(models.Model):
+    name = models.CharField(max_length=30)
+    highest_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    lowest_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+
+    def __str__(self):
+        return f"{self.name} - {self.lowest_price} - {self.highest_price}"
+
+
 def get_tokens_pair():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)

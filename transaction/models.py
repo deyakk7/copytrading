@@ -15,9 +15,14 @@ USER_DEPOSIT_TYPES = (
 class Transaction(models.Model):
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE)
     crypto_pair = models.CharField(max_length=10)
-    price = models.DecimalField(max_digits=30, decimal_places=7)
-    amount = models.DecimalField(max_digits=30, decimal_places=7)
-    side = models.BooleanField()
+    side = models.CharField(max_length=10, choices=(('short', 'short'), ('long', 'long')), default='long')
+    open_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    close_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    close_time = models.DateTimeField(default=timezone.now)
+    roi = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+
+    def __str__(self):
+        return f'{self.trader} - {self.crypto_pair} - {self.side} - {self.roi} - {self.close_time}'
 
 
 class Transfer(models.Model):
