@@ -9,26 +9,12 @@ from django_celery_beat.models import PeriodicTask, IntervalSchedule
 from crypto.models import CryptoPriceHistory24h
 from strategy.models import Strategy
 from transaction.models import Transaction
+from transaction.utils import saving_crypto_data_24h
 
 
 @shared_task
 def get_highest_lowest_price():
-    binance_url = "https://api.binance.com/api/v3/ticker/24hr"
-    response = rq.get(binance_url)
-    data = response.json()
-    for token in data:
-        if token['symbol'][-4:] != 'USDT' or token['highPrice'] == '0.00000000':
-            continue
-        name = token['symbol']
-        highest_price = token['highPrice']
-        lowest_price = token['lowPrice']
-        CryptoPriceHistory24h.objects.update_or_create(
-            name=name,
-            defaults={
-                'highest_price': highest_price,
-                'lowest_price': lowest_price,
-            }
-        )
+    saving_crypto_data_24h()
 
 
 def run_get_highest_lowest_price():
@@ -67,6 +53,9 @@ def create_transaction():
         close_price = round(decimal.Decimal(data['price']), 7)
         roi = decimal.Decimal(random.randint(-10000, 10000) / 100)
         crypto_history = CryptoPriceHistory24h.objects.filter(name=crypto_pair).first()
+        if crypto_history is None:
+            saving_crypto_data_24h()
+            continue
         side = crypto.side
         while roi == 0:
             roi = decimal.Decimal(random.randint(-10000, 10000) / 100)
