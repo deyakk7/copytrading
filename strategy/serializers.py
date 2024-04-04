@@ -72,7 +72,7 @@ class StrategySerializer(serializers.ModelSerializer):
     cryptos = CryptoSerializer(many=True, source='crypto')
     trader = serializers.PrimaryKeyRelatedField(queryset=Trader.objects.all(), required=False)
     avg_profit = serializers.DecimalField(max_digits=30, decimal_places=2, read_only=True)
-    total_deposited = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
+    total_deposited = serializers.DecimalField(max_digits=30, decimal_places=2, read_only=True)
     users = StrategyUserSerializer(many=True, read_only=True)
     custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     total_copiers = serializers.IntegerField(required=False)
