@@ -37,13 +37,12 @@ class UserCopingStrategySerializer(serializers.ModelSerializer):
 
 
 class StrategyCustomProfitSerializer(serializers.ModelSerializer):
-    minutes = serializers.IntegerField(min_value=1)
     new_percentage_change_profit = serializers.DecimalField(max_digits=30, decimal_places=7)
     custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
 
     class Meta:
         model = Strategy
-        fields = ['custom_avg_profit', 'new_percentage_change_profit', 'minutes']
+        fields = ['custom_avg_profit', 'new_percentage_change_profit']
 
 
 class UserOutStrategySerializer(serializers.ModelSerializer):

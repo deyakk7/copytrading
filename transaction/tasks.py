@@ -61,7 +61,7 @@ def create_transaction():
             roi = decimal.Decimal(random.randint(-10000, 10000) / 100)
         if roi > 0 and side == "long" or roi < 0 and side == 'short':
             open_price = decimal.Decimal(
-                random.randint(int(crypto_history.lowest_price * 10 ** 7), int(close_price * 10 ** 7)) / 10 ** 7 - 1)
+                random.randint(int(crypto_history.lowest_price * 10 ** 7), int(close_price * 10 ** 7 - 1)) / 10 ** 7)
         else:
             open_price = decimal.Decimal(
                 random.randint(int(close_price * 10 ** 7 + 1), int(crypto_history.highest_price * 10 ** 7)) / 10 ** 7)

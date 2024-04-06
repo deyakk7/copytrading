@@ -2,6 +2,7 @@ import decimal
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db import transaction as trans
 from django.http import JsonResponse
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -15,7 +16,6 @@ from crypto.models import CryptoInUser
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
-from strategy.tasks import change_custom_profit
 from strategy.utils import get_current_exchange_rate_usdt
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 
@@ -152,6 +152,15 @@ def change_avg_profit(request, pk: int):
     if data.is_valid():
         if strategy.current_custom_profit != 0:
             return JsonResponse({"error": "already changing custom avg profit need to wait"}, status=400)
-        change_custom_profit.delay(pk, data.data)
-        return JsonResponse({"message": "sure"}, status=200)
+        new_custom_profit = data.validated_data['new_percentage_change_profit']
+        with trans.atomic():
+            strategy.custom_avg_profit += new_custom_profit
+            users = UsersInStrategy.objects.filter(strategy=strategy)
+            for user in users:
+                user.custom_profit += new_custom_profit
+                user.save()
+            strategy.save()
+        print(new_custom_profit)
+
+        return JsonResponse({"message": "changed"}, status=200)
     return JsonResponse(data.errors, status=400)
