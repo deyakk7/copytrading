@@ -5,14 +5,13 @@ from celery import shared_task
 from django.db import transaction as trans
 
 from strategy.models import Strategy, StrategyProfitHistory, UsersInStrategy
-from strategy.utils import get_current_exchange_rate_pair, get_current_exchange_rate_usdt, \
+from strategy.utils import get_current_exchange_rate_usdt, \
     get_percentage_change
 from trader.models import Trader
 
 
 @shared_task
 def calculate_avg_profit():
-    exchange_rate_pair = get_current_exchange_rate_pair()
     exchange_rate = get_current_exchange_rate_usdt()
     strategies = Strategy.objects.all()
 
@@ -66,7 +65,7 @@ def calculate_avg_profit():
             strategy = user_in_strategy.strategy
             user_in_strategy.strategy.refresh_from_db()
             user_in_strategy.profit = avg_profit + strategy.custom_avg_profit + strategy.current_custom_profit - \
-                user_in_strategy.custom_profit - user_in_strategy.current_custom_profit
+                                      user_in_strategy.custom_profit - user_in_strategy.current_custom_profit
             user_in_strategy.save()
 
     return 'done avg profit for strategies, traders, users_in_strategy'

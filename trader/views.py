@@ -39,3 +39,8 @@ class TraderViewSet(ModelViewSet):
         transactions = trader.transaction_set.all().order_by('-close_time')
         serializer = TransactionSerializer(transactions, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def get_stats(self, request, *args, **kwargs):
+        trader = self.get_object()
+        return JsonResponse(trader.get_stats(), safe=False)
