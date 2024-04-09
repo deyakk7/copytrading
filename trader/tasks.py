@@ -14,6 +14,8 @@ from .models import Trader
 def calculate_stats():
     for trader in Trader.objects.all():
         transactions = trader.transaction_set.all()
+        if transactions.count() == 0:
+            continue
         roi = round(transactions.aggregate(Sum('roi'))['roi__sum'] / transactions.count(), 2)
 
         profit_to_loss_ratio = round(
