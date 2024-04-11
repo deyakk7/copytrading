@@ -2,6 +2,8 @@ import decimal
 
 import requests as rq
 
+from crypto.models import Crypto
+
 
 def get_token_name():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
@@ -27,13 +29,13 @@ def get_klines(symbol_input: str):
     params = {
         'symbol': symbol,
         'interval': '1m',
-        'limit': 61
+        'limit': 6
     }
 
     response = rq.get(url, params=params)
     data = response.json()
     close_price_previous_hour = float(data[0][4])
-    close_current_price = float(data[60][4])
+    close_current_price = float(data[5][4])
 
     percentage_change = ((decimal.Decimal(close_current_price) - decimal.Decimal(
         close_price_previous_hour)) / decimal.Decimal(close_price_previous_hour)) * decimal.Decimal(100)
@@ -73,4 +75,14 @@ def get_current_exchange_rate_usdt():
     data = response.json()
     result = {token['symbol'][:-4]: token['price'] for token in data if token['symbol'].endswith('USDT')}
     result['USDT'] = 1
+    return result
+
+
+def get_last_percentage_change_by_5_minutes():
+    unique_crypto_names = Crypto.objects.values_list('name', flat=True).distinct()
+
+    result = {}
+    for name in unique_crypto_names:
+        result[name] = get_klines(name)
+
     return result

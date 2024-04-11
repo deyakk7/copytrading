@@ -29,6 +29,6 @@ def get_all_cryptos_in_percentage(request):
     result_dict = {item['name']: item['total'] for item in result}
     summary = sum(result_dict.values())
     for key, value in result_dict.items():
-        result_dict[key] = round(value / summary * 100, 4)
+        result_dict[key] = round(value / summary * 100, 2)
 
     return JsonResponse(result_dict, safe=False)

@@ -1,8 +1,8 @@
 import os
 
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
-from django.utils import timezone
 
 User = get_user_model()
 
@@ -13,7 +13,7 @@ class Trader(models.Model):
     date_of_registration = models.DateTimeField(auto_now_add=True)
     photo = models.ImageField(upload_to='trader_photos', blank=True, null=True)
     avg_profit_strategies = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    max_copiers = models.IntegerField(default=10)
+    max_copiers = models.IntegerField(default=10, validators=[MinValueValidator(1)])
     copiers_count = models.IntegerField(default=0)
     visible = models.BooleanField(default=False)
 
