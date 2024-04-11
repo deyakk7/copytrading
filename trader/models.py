@@ -9,10 +9,11 @@ User = get_user_model()
 
 class Trader(models.Model):
     nickname = models.CharField(max_length=50, unique=True)
-    about = models.CharField(max_length=500, blank=True)
+    about = models.CharField(max_length=500, blank=True, null=True)
     date_of_registration = models.DateTimeField(auto_now_add=True)
-    photo = models.ImageField(upload_to='trader_photos', blank=True)
+    photo = models.ImageField(upload_to='trader_photos', blank=True, null=True)
     avg_profit_strategies = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    max_copiers = models.IntegerField(default=10)
     copiers_count = models.IntegerField(default=0)
     visible = models.BooleanField(default=False)
 

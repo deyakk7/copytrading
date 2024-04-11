@@ -2,10 +2,9 @@ from django.db import transaction as trans
 from django.db.models import Sum
 from rest_framework import serializers
 
-from crypto.models import Crypto, CryptoInUser
+from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
-from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
 
 
@@ -79,7 +78,7 @@ class StrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
-                  'total_deposited', 'users', 'total_copiers', 'max_users', 'custom_avg_profit',
+                  'total_deposited', 'users', 'total_copiers', 'custom_avg_profit',
                   'current_custom_profit']
 
     def to_representation(self, instance):
@@ -93,7 +92,6 @@ class StrategySerializer(serializers.ModelSerializer):
 
         if cryptos_data is None:
             return strategy
-        exchange_rate = get_current_exchange_rate_usdt()
 
         sum_of_percent = 0
         for crypto_data in cryptos_data:
@@ -107,11 +105,9 @@ class StrategySerializer(serializers.ModelSerializer):
         usdt_value = 100 - sum_of_percent
         with trans.atomic():
             if usdt_value != 0:
-                Crypto.objects.create(strategy=strategy, exchange_rate=1, name='USDT', total_value=usdt_value,
-                                      side=None)
+                Crypto.objects.create(strategy=strategy, name='USDT', total_value=usdt_value, side=None)
             for crypto_data in cryptos_data:
-                Crypto.objects.create(strategy=strategy, exchange_rate=exchange_rate[crypto_data['name']],
-                                      **crypto_data)
+                Crypto.objects.create(strategy=strategy, **crypto_data)
         return strategy
 
     def update(self, instance, validated_data):
@@ -121,12 +117,13 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.trader = validated_data.get('trader', instance.trader)
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
-        instance.max_users = validated_data.get('max_users', instance.max_users)
         instance.custom_avg_profit = validated_data.get('custom_avg_profit', instance.custom_avg_profit)
-        if validated_data.get('total_copiers') is not None:
-            if validated_data.get('total_copiers') > instance.max_users:
-                raise serializers.ValidationError({'error': 'Total copiers must be less than max users'})
-            if instance.trader:
+        if instance.trader:
+            current_available_copiers = instance.trader.max_copiers - instance.trader.copiers_count
+            if validated_data.get('total_copiers') is not None:
+                if validated_data.get('total_copiers') - instance.total_copiers > current_available_copiers:
+                    raise serializers.ValidationError({'error': 'Total copiers must be less than max copiers in trader'})
+
                 with trans.atomic():
                     instance.trader.copiers_count = \
                         Strategy.objects.filter(trader=instance.trader).aggregate(
@@ -139,7 +136,6 @@ class StrategySerializer(serializers.ModelSerializer):
 
         if cryptos_data is None:
             return instance
-        exchange_rate = get_current_exchange_rate_usdt()
         keep_cryptos = []
 
         sum_of_percent = 0
@@ -155,8 +151,7 @@ class StrategySerializer(serializers.ModelSerializer):
                     sum_of_percent += crypto.total_value
                     keep_cryptos.append(crypto.id)
                     continue
-                c = Crypto.objects.create(strategy=instance, exchange_rate=exchange_rate[crypto_data['name']],
-                                          **crypto_data)
+                c = Crypto.objects.create(strategy=instance, **crypto_data)
                 sum_of_percent += c.total_value
                 keep_cryptos.append(c.id)
             usdt_crypto = instance.crypto.filter(name='USDT', strategy=instance).first()
@@ -171,39 +166,12 @@ class StrategySerializer(serializers.ModelSerializer):
                 usdt_crypto.save()
                 keep_cryptos.append(usdt_crypto.id)
             else:
-                c = Crypto.objects.create(strategy=instance, exchange_rate=1,
-                                          name="USDT", total_value=needed_percentage, side=None)
+                c = Crypto.objects.create(strategy=instance, name="USDT", total_value=needed_percentage, side=None)
                 keep_cryptos.append(c.id)
 
             for crypto in instance.crypto.all():
                 if crypto.id not in keep_cryptos:
                     crypto.delete()
             instance.save()
-
-            crypto_in_strategy = [c.name for c in instance.crypto.all()]
-            crypto_in_strategy_with_percentage = {c.name: c for c in instance.crypto.all()}
-
-            users = instance.users.all()
-
-            for user in users:
-                keep_crypto_users = []
-                for crypto in user.crypto.all():
-                    if crypto.name in crypto_in_strategy:
-                        crypto.total_value = crypto_in_strategy_with_percentage[crypto.name].total_value
-                        crypto.side = crypto_in_strategy_with_percentage[crypto.name].side
-                        crypto.save()
-                        keep_crypto_users.append(crypto_in_strategy_with_percentage[crypto.name].id)
-                    else:
-                        crypto.delete()
-
-                needed_crypto_from_strategy = instance.crypto.exclude(id__in=keep_crypto_users)
-                for i in needed_crypto_from_strategy:
-                    CryptoInUser.objects.create(
-                        user_in_strategy=user,
-                        name=i.name,
-                        total_value=i.total_value,
-                        exchange_rate=exchange_rate[i.name],
-                        side=i.side
-                    )
 
         return instance

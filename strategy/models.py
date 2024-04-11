@@ -16,7 +16,6 @@ class Strategy(models.Model):
     total_deposited = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     min_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     max_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
-    max_users = models.PositiveIntegerField(default=0)
     total_copiers = models.IntegerField(default=0)
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies', null=True, blank=True)
 

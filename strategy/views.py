@@ -10,13 +10,12 @@ from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
-from crypto.models import CryptoInUser
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
-from strategy.utils import get_current_exchange_rate_usdt
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 
 
@@ -63,40 +62,42 @@ class UsersOutStrategyListView(generics.ListAPIView):
 def add_user_into_strategy(request, pk: int):
     if request.user.is_superuser:
         return JsonResponse({"error": "Superuser cannot copy strategies"}, status=400)
+    wallet = request.user.wallet
+
     input_data = request.data
     input_data['strategy'] = pk
     input_data['user'] = request.user.id
+
     strategy = Strategy.objects.get(id=pk)
-    wallet = request.user.wallet
+
     if strategy.trader is None:
         return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
-    if strategy.total_copiers >= strategy.max_users:
-        return JsonResponse({"error": "This strategy is full"}, status=400, safe=False)
+
+    current_available_copiers = strategy.trader.max_copiers - strategy.trader.copiers_count
+
+    if not current_available_copiers:
+        return JsonResponse({"error": "This trader is full"}, status=400, safe=False)
+
     if wallet < strategy.min_deposit or wallet < decimal.Decimal(input_data['value']):
         return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
+
     input_data['current_custom_profit'] = strategy.current_custom_profit
     input_data['custom_profit'] = strategy.custom_avg_profit
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
+        strategy.total_deposited += decimal.Decimal(input_data['value'])
+        request.user.wallet -= decimal.Decimal(input_data['value'])
+
+        strategy.total_copiers += 1
+        strategy.trader.copiers_count += 1
+
         with transaction.atomic():
-            strategy.total_deposited += decimal.Decimal(input_data['value'])
-            request.user.wallet -= decimal.Decimal(input_data['value'])
-            strategy.total_copiers += 1
-            strategy.trader.copiers_count += 1
             strategy.trader.save()
             strategy.save()
             request.user.save()
-            obj = data.save()
-        crypto_in_strategy = obj.strategy.crypto.all()
-        exchange_rate = get_current_exchange_rate_usdt()
-        for crypto in crypto_in_strategy:
-            CryptoInUser.objects.create(
-                name=crypto.name,
-                exchange_rate=exchange_rate[crypto.name],
-                total_value=crypto.total_value,
-                user_in_strategy=obj
-            )
+
+            data.save()
 
         return JsonResponse(data.data, status=201)
 
@@ -106,31 +107,38 @@ def add_user_into_strategy(request, pk: int):
 @api_view(['DELETE'])
 @login_required()
 def remove_user_from_strategy(request, pk: int):
-    data = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
-    if data is not None:
-        strategy = data.strategy
-        with transaction.atomic():
-            strategy.total_deposited -= data.value
-            if strategy.total_copiers != 0:
-                strategy.total_copiers -= 1
-                strategy.trader.copiers_count -= 1
-            strategy.trader.save()
-            request.user.wallet += data.value + data.profit * (data.value / decimal.Decimal(100))
-            request.user.save()
-            UserOutStrategy.objects.create(
-                user=data.user,
-                strategy=data.strategy,
-                value=data.value,
-                profit=data.profit,
-                date_of_adding=data.date_of_adding,
-                date_of_out=timezone.now()
-            )
+    data: UsersInStrategy = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
+    if data is None:
+        return JsonResponse({"error": "User not found in strategy"}, status=404)
 
-            data.delete()
-            strategy.save()
+    strategy = data.strategy
+    strategy.total_deposited -= data.value
 
-        return JsonResponse({"message": "You have left the strategy successfully"}, status=200)
-    return JsonResponse({"error": "User not found in strategy"}, status=404)
+    if strategy.total_copiers > 0:
+        strategy.total_copiers -= 1
+    if strategy.trader.copiers_count > 0:
+        strategy.trader.copiers_count -= 1
+
+    request.user.wallet += data.value + data.profit * (data.value / decimal.Decimal(100))
+
+    with transaction.atomic():
+        UserOutStrategy.objects.create(
+            user=data.user,
+            strategy=data.strategy,
+            value=data.value,
+            profit=data.profit,
+            date_of_adding=data.date_of_adding,
+            date_of_out=timezone.now()
+        )
+
+        request.user.save()
+
+        strategy.save()
+        strategy.trader.save()
+
+        data.delete()
+
+    return JsonResponse({"message": "You have left the strategy successfully"}, status=200)
 
 
 class StrategyAvailableListView(generics.ListAPIView):
@@ -148,10 +156,12 @@ class StrategyAvailableListView(generics.ListAPIView):
 @api_view(['POST'])
 def change_avg_profit(request, pk: int):
     strategy = get_object_or_404(Strategy, pk=pk)
+
     data = StrategyCustomProfitSerializer(data=request.data)
     if data.is_valid():
         if strategy.current_custom_profit != 0:
             return JsonResponse({"error": "already changing custom avg profit need to wait"}, status=400)
+
         new_custom_profit = data.validated_data['new_percentage_change_profit']
         with trans.atomic():
             strategy.custom_avg_profit += new_custom_profit
@@ -160,7 +170,6 @@ def change_avg_profit(request, pk: int):
                 user.custom_profit += new_custom_profit
                 user.save()
             strategy.save()
-        print(new_custom_profit)
 
         return JsonResponse({"message": "changed"}, status=200)
     return JsonResponse(data.errors, status=400)
