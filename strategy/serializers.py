@@ -6,6 +6,7 @@ from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from trader.models import Trader
+from transaction.utils import saving_crypto_data_24h, create_transaction_on_change
 
 
 class StrategyUserSerializer(serializers.ModelSerializer):
@@ -122,7 +123,8 @@ class StrategySerializer(serializers.ModelSerializer):
             current_available_copiers = instance.trader.max_copiers - instance.trader.copiers_count
             if validated_data.get('total_copiers') is not None:
                 if validated_data.get('total_copiers') - instance.total_copiers > current_available_copiers:
-                    raise serializers.ValidationError({'error': 'Total copiers must be less than max copiers in trader'})
+                    raise serializers.ValidationError(
+                        {'error': 'Total copiers must be less than max copiers in trader'})
 
                 with trans.atomic():
                     instance.trader.copiers_count = \
@@ -138,33 +140,51 @@ class StrategySerializer(serializers.ModelSerializer):
             return instance
         keep_cryptos = []
 
+        crypto_before_change = Crypto.objects.filter(strategy=instance).values('name', 'total_value', 'side')
+
+        for crypto in crypto_before_change:
+            print(crypto)
+
         sum_of_percent = 0
+
         with trans.atomic():
             for crypto_data in cryptos_data:
                 if crypto_data['name'] == 'USDT':
                     continue
+
                 crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
+
                 if crypto:
                     crypto.total_value = crypto_data.get('total_value', crypto.total_value)
                     crypto.side = crypto_data.get('side', crypto.side)
+
                     crypto.save()
+
                     sum_of_percent += crypto.total_value
                     keep_cryptos.append(crypto.id)
                     continue
+
                 c = Crypto.objects.create(strategy=instance, **crypto_data)
+
                 sum_of_percent += c.total_value
                 keep_cryptos.append(c.id)
+
             usdt_crypto = instance.crypto.filter(name='USDT', strategy=instance).first()
+
             if sum_of_percent > 100:
                 trans.set_rollback(True)
                 raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
+
             needed_percentage = 100 - sum_of_percent
+
             if needed_percentage == 0 and usdt_crypto:
                 usdt_crypto.delete()
+
             elif needed_percentage and usdt_crypto:
                 usdt_crypto.total_value = needed_percentage
                 usdt_crypto.save()
                 keep_cryptos.append(usdt_crypto.id)
+
             else:
                 c = Crypto.objects.create(strategy=instance, name="USDT", total_value=needed_percentage, side=None)
                 keep_cryptos.append(c.id)
@@ -173,5 +193,35 @@ class StrategySerializer(serializers.ModelSerializer):
                 if crypto.id not in keep_cryptos:
                     crypto.delete()
             instance.save()
+
+            crypto_info_past_24h = saving_crypto_data_24h()
+            used_crypto = set()
+            used_crypto.add("USDT")
+
+            for crypto in crypto_before_change:
+                if crypto['name'] == 'USDT':
+                    continue
+
+                crypto_db = Crypto.objects.filter(
+                    name=crypto['name'],
+                    strategy=instance,
+                ).first()
+
+                if crypto_db is None:
+                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
+
+                elif crypto['total_value'] != crypto_db.total_value:
+                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
+
+                used_crypto.add(crypto['name'])
+
+            unused_crypto_db = Crypto.objects.filter(
+                strategy=instance,
+            ).exclude(
+                name__in=used_crypto
+            ).values('name', 'total_value', 'side')
+
+            for crypto in unused_crypto_db:
+                create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
 
         return instance

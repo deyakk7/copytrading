@@ -164,10 +164,10 @@ def change_avg_profit(request, pk: int):
 
         new_custom_profit = data.validated_data['new_percentage_change_profit']
         with trans.atomic():
-            strategy.custom_avg_profit += new_custom_profit
+            strategy.avg_profit += new_custom_profit
             users = UsersInStrategy.objects.filter(strategy=strategy)
             for user in users:
-                user.custom_profit += new_custom_profit
+                user.profit += new_custom_profit
                 user.save()
             strategy.save()
 

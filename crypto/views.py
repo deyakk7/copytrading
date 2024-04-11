@@ -20,15 +20,3 @@ class CryptoViewSet(ModelViewSet):
 @permission_classes([IsSuperUser])
 def get_exchange_info(request):
     return JsonResponse(CRYPTO_NAMES[:100], safe=False)
-
-
-@api_view(['GET'])
-@permission_classes([IsSuperUser])
-def get_all_cryptos_in_percentage(request):
-    result = Crypto.objects.values('name').annotate(total=Sum('total_value'))
-    result_dict = {item['name']: item['total'] for item in result}
-    summary = sum(result_dict.values())
-    for key, value in result_dict.items():
-        result_dict[key] = round(value / summary * 100, 2)
-
-    return JsonResponse(result_dict, safe=False)

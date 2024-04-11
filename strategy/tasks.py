@@ -4,9 +4,8 @@ import time
 from celery import shared_task
 from django.db import transaction as trans, models
 
-from strategy.models import Strategy, StrategyProfitHistory, UsersInStrategy
-from strategy.utils import get_current_exchange_rate_usdt, \
-    get_percentage_change, get_last_percentage_change_by_5_minutes
+from strategy.models import Strategy, StrategyProfitHistory
+from strategy.utils import get_last_percentage_change_by_5_minutes
 from trader.models import Trader
 
 
@@ -31,9 +30,9 @@ def calculate_avg_profit():
 
         with trans.atomic():
             strategy.refresh_from_db()
-            strategy.avg_profit += avg_profit + strategy.custom_avg_profit
+            strategy.avg_profit += avg_profit
             for user in strategy.users.all():
-                user.profit += avg_profit + user.custom_avg_profit
+                user.profit += avg_profit
                 user.save()
             strategy.save()
 

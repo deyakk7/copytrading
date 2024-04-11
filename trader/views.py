@@ -16,6 +16,13 @@ class TraderViewSet(ModelViewSet):
     serializer_class = TraderSerializer
     permission_classes = (IsSuperUserOrReadOnly,)
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if not self.request.user.is_superuser:
+            queryset = queryset.filter(visible=True)
+
+        return queryset
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         users = UsersInStrategy.objects.filter(strategy__trader=instance).exists()

@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -13,10 +14,10 @@ class Strategy(models.Model):
     custom_avg_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     current_custom_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     about = models.TextField()
-    total_deposited = models.DecimalField(default=0, decimal_places=2, max_digits=30)
+    total_deposited = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
     min_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     max_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
-    total_copiers = models.IntegerField(default=0)
+    total_copiers = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies', null=True, blank=True)
 
     def __str__(self):
