@@ -1,9 +1,11 @@
+from django.db.models import Sum
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from crypto.models import Crypto
 from strategy.models import UsersInStrategy
 from transaction.serializers import TransactionSerializer
 from .models import Trader
@@ -50,4 +52,16 @@ class TraderViewSet(ModelViewSet):
     @action(detail=True, methods=['get'])
     def get_stats(self, request, *args, **kwargs):
         trader = self.get_object()
-        return JsonResponse(trader.get_stats(), safe=False)
+
+        result = Crypto.objects.filter(strategy__trader=trader).values('name').annotate(total=Sum('total_value'))
+        result_dict = {item['name']: item['total'] for item in result}
+
+        summary = sum(result_dict.values())
+
+        for key, value in result_dict.items():
+            result_dict[key] = round(value / summary * 100, 2)
+
+        response = trader.get_stats()
+        response['get_cryptos_in_percentage'] = result_dict
+
+        return JsonResponse(response, safe=False)
