@@ -44,7 +44,7 @@ class StrategyViewSet(ModelViewSet):
         data = []
         for strategy in my_strategies:
             data.append({
-                'strategy_id': strategy.id,
+                'strategy_id': strategy.strategy_id,
                 'value': strategy.value,
                 'profit': strategy.profit,
                 'date_of_adding': strategy.date_of_adding,
