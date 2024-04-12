@@ -84,7 +84,7 @@ class StrategySerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['profits'] = instance.profits.all().order_by('-date').values_list('value', flat=True)
+        data['profits'] = instance.profits.all().order_by('date').values_list('value', flat=True)
         return data
 
     def create(self, validated_data):

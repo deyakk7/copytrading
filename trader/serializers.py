@@ -30,7 +30,7 @@ class TraderSerializer(serializers.ModelSerializer):
 
         data['get_cryptos_in_percentage'] = result_dict
         data['strategies_id'] = [strategy.id for strategy in instance.strategies.all()]
-        data['profits'] = instance.profits.all().order_by('-date').values_list('value', flat=True)
+        data['profits'] = instance.profits.all().order_by('date').values_list('value', flat=True)
 
         return data
 
