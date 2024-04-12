@@ -25,7 +25,7 @@ def saving_crypto_data_24h():
     return result
 
 
-def create_transaction_on_change(crypto, trader, history):
+def create_transaction_on_change(crypto, trader, history, new_side):
     binance_url = "https://api.binance.com/api/v3/ticker/price"
 
     crypto_pair = crypto['name'] + "USDT"
@@ -36,7 +36,7 @@ def create_transaction_on_change(crypto, trader, history):
     roi = decimal.Decimal(random.randint(-1000, 5000) / 100)
 
     crypto_history = history[crypto_pair]
-    side = crypto['side']
+    side = new_side
 
     while roi == 0:
         roi = decimal.Decimal(random.randint(-1000, 5000) / 100)

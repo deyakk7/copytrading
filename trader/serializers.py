@@ -5,6 +5,7 @@ from crypto.models import Crypto
 from strategy.models import Strategy
 from strategy.serializers import StrategySerializer
 from trader.models import Trader
+from transaction.utils import saving_crypto_data_24h, create_transaction_on_change
 
 
 class TraderSerializer(serializers.ModelSerializer):
@@ -36,6 +37,22 @@ class TraderSerializer(serializers.ModelSerializer):
     def save(self, **kwargs):
         strategies_id = self.validated_data.pop('strategies_id', None)
         instance = super().save(**kwargs)
+
+        if strategies_id is None:
+            return instance
+
+        strategy_in_db = list(Strategy.objects.filter(trader=instance).values_list('id', flat=True))
+        new_id = list(set(strategies_id) - set(strategy_in_db))
+
+        history_past24h = saving_crypto_data_24h()
+
+        crypto_from_strategies = Crypto.objects.filter(strategy_id__in=new_id).values('name', 'total_value', 'side')
+
+        for crypto in crypto_from_strategies:
+            if crypto['name'] == 'USDT':
+                continue
+            create_transaction_on_change(crypto, instance, history_past24h, crypto['side'])
+
         if strategies_id is not None:
             instance.strategies.set(Strategy.objects.filter(id__in=strategies_id))
         return instance

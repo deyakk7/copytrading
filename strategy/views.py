@@ -37,6 +37,21 @@ class StrategyViewSet(ModelViewSet):
         my_strategies = UsersInStrategy.objects.filter(user=request.user).values_list('strategy', flat=True).distinct()
         return JsonResponse({'my_copied_strategies_id': list(my_strategies)}, safe=False)
 
+    @action(detail=False, methods=['get'])
+    def my_deposited(self, request, *args, **kwargs):
+        my_strategies = UsersInStrategy.objects.filter(user=request.user)
+
+        data = []
+        for strategy in my_strategies:
+            data.append({
+                'strategy_id': strategy.id,
+                'value': strategy.value,
+                'profit': strategy.profit,
+                'date_of_adding': strategy.date_of_adding,
+            })
+
+        return JsonResponse(data, safe=False)
+
 
 class UsersCopiedListView(generics.ListAPIView):
     serializer_class = StrategyUserListSerializer

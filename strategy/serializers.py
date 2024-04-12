@@ -104,11 +104,13 @@ class StrategySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
 
         usdt_value = 100 - sum_of_percent
+
         with trans.atomic():
             if usdt_value != 0:
                 Crypto.objects.create(strategy=strategy, name='USDT', total_value=usdt_value, side=None)
             for crypto_data in cryptos_data:
                 Crypto.objects.create(strategy=strategy, **crypto_data)
+
         return strategy
 
     def update(self, instance, validated_data):
@@ -208,10 +210,10 @@ class StrategySerializer(serializers.ModelSerializer):
                 ).first()
 
                 if crypto_db is None:
-                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
+                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto.side)
 
-                elif crypto['total_value'] != crypto_db.total_value:
-                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
+                elif crypto['total_value'] != crypto_db.total_value or crypto['side'] != crypto_db.side:
+                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto.side)
 
                 used_crypto.add(crypto['name'])
 
@@ -222,6 +224,6 @@ class StrategySerializer(serializers.ModelSerializer):
             ).values('name', 'total_value', 'side')
 
             for crypto in unused_crypto_db:
-                create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h)
+                create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto['side'])
 
         return instance

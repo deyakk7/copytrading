@@ -30,7 +30,7 @@ def calculate_stats():
                 win_rate = 100.00
             else:
                 win_rate = 0
-        first_trade_time = transactions.order_by('close_time').first()
+        first_trade_time = transactions.order_by('close_time').first().close_time
         current_time = timezone.now()
         weekly_trades = round(transactions.count() / math.ceil(max((current_time - first_trade_time).days, 1) / 7), 2)
         if trader.avg_holding_time == "No info":

@@ -37,9 +37,13 @@ def calculate_avg_profit():
             strategy.save()
 
     for trader in Trader.objects.all():
-        avg_profit = trader.strategies.aggregate(avg_profit=models.Avg('avg_profit'))['avg_profit']
-        trader.avg_profit_strategies = avg_profit
-        trader.save()
+        with trans.atomic():
+            trader.refresh_from_db()
+
+            avg_profit = trader.strategies.aggregate(avg_profit=models.Avg('avg_profit'))['avg_profit']
+
+            trader.avg_profit_strategies = avg_profit
+            trader.save()
 
     return 'done avg profit for strategies, traders, users_in_strategy'
 
