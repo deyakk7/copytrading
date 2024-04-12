@@ -6,13 +6,13 @@ from django.db import transaction as trans, models
 
 from strategy.models import Strategy, StrategyProfitHistory
 from strategy.utils import get_last_percentage_change_by_5_minutes
-from trader.models import Trader
+from trader.models import Trader, TraderProfitHistory
 
 
 @shared_task
 def calculate_avg_profit():
     r = get_last_percentage_change_by_5_minutes()
-    strategies = Strategy.objects.all()
+    strategies = Strategy.objects.exclude(trader=None)
 
     for strategy in strategies:
         avg_profit = 0
@@ -45,10 +45,15 @@ def calculate_avg_profit():
 
 
 @shared_task
+@trans.atomic()
 def saving_avg_profit():
-    for strategy in Strategy.objects.all():
+    for strategy in Strategy.objects.exclude(trader=None):
         StrategyProfitHistory.objects.create(strategy=strategy, value=strategy.avg_profit)
-    return "saving avg_profit"
+
+    for trader in Trader.objects.all():
+        TraderProfitHistory.objects.create(trader=trader, value=trader.roi)
+
+    return "saving avg_profit and traders' profit"
 
 
 @shared_task

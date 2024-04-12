@@ -71,3 +71,9 @@ class Trader(models.Model):
             'sortino_ratio': self.sortino_ratio,
             'last_traded_at': self.last_traded_at,
         }
+
+
+class TraderProfitHistory(models.Model):
+    trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='profits')
+    value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    date = models.DateTimeField(auto_now_add=True)

@@ -1,5 +1,7 @@
+from django.db.models import Sum
 from rest_framework import serializers
 
+from crypto.models import Crypto
 from strategy.models import Strategy
 from strategy.serializers import StrategySerializer
 from trader.models import Trader
@@ -16,7 +18,19 @@ class TraderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+
+        result = Crypto.objects.filter(strategy__trader=instance).values('name').annotate(total=Sum('total_value'))
+        result_dict = {item['name']: item['total'] for item in result}
+
+        summary = sum(result_dict.values())
+
+        for key, value in result_dict.items():
+            result_dict[key] = round(value / summary * 100, 2)
+
+        data['get_cryptos_in_percentage'] = result_dict
         data['strategies_id'] = [strategy.id for strategy in instance.strategies.all()]
+        data['profits'] = instance.profits.all().order_by('-date').values_list('value', flat=True)
+
         return data
 
     def save(self, **kwargs):

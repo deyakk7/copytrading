@@ -2,7 +2,7 @@ import decimal
 import math
 
 from celery import shared_task
-from django.db.models import Sum
+from django.db.models import Sum, Avg
 from django.utils import timezone
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
@@ -16,14 +16,23 @@ def calculate_stats():
         transactions = trader.transaction_set.all()
         if transactions.count() == 0:
             continue
-        roi = round(transactions.aggregate(Sum('roi'))['roi__sum'] / transactions.count(), 2)
+        roi = round(transactions.aggregate(roi_avg=Avg('roi'))['roi_avg'], 2)
+        try:
+            profit_to_loss_ratio = round(
+                transactions.filter(roi__gt=0).count() / transactions.filter(roi__lt=0).count(), 2)
+        except ZeroDivisionError:
+            profit_to_loss_ratio = round(transactions.filter(roi__gt=0).count(), 2)
 
-        profit_to_loss_ratio = round(
-            transactions.filter(roi__gt=0).count() / transactions.filter(roi__lt=0).count(), 2)
-        win_rate = round(transactions.filter(roi__gt=0).count() / transactions.count(), 4) * 100
-        first_trade_time = transactions.order_by('close_time').first().close_time
+        try:
+            win_rate = round(transactions.filter(roi__gt=0).count() / transactions.count(), 4) * 100
+        except ZeroDivisionError:
+            if transactions.filter(roi__gt=0).count():
+                win_rate = 100.00
+            else:
+                win_rate = 0
+        first_trade_time = transactions.order_by('close_time').first()
         current_time = timezone.now()
-        weekly_trades = round(transactions.count() / math.ceil((current_time - first_trade_time).days / 7), 2)
+        weekly_trades = round(transactions.count() / math.ceil(max((current_time - first_trade_time).days, 1) / 7), 2)
         if trader.avg_holding_time == "No info":
             avg_holding_time = random_time_full_change()
         else:
@@ -35,12 +44,16 @@ def calculate_stats():
         sharpe_ratio = round(roi / decimal.Decimal(roi_deviation), 2)
 
         transactions_minus = transactions.filter(roi__lt=0)
-        roi_minus = round(transactions_minus.aggregate(Sum('roi'))['roi__sum'] / transactions_minus.count(), 2)
-        roi_deviation_minus = math.sqrt(
-            sum([min(0, x.roi - roi_minus) ** 2 for x in transactions_minus]) / transactions_minus.count()
-        )
+        if transactions_minus is not None:
+            roi_minus = round(transactions_minus.aggregate(Sum('roi'))['roi__sum'] / transactions_minus.count(), 2)
+            roi_deviation_minus = math.sqrt(
+                sum([min(0, x.roi - roi_minus) ** 2 for x in transactions_minus]) / transactions_minus.count()
+            )
+            sortino_ratio = round(roi / decimal.Decimal(roi_deviation_minus), 2)
 
-        sortino_ratio = round(roi / decimal.Decimal(roi_deviation_minus), 2)
+        else:
+            sortino_ratio = 0.00
+
         roi_volatility = round(roi_deviation, 2)
 
         trader.roi = roi
