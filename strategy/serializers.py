@@ -213,7 +213,7 @@ class StrategySerializer(serializers.ModelSerializer):
                     create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto.side)
 
                 elif crypto['total_value'] != crypto_db.total_value or crypto['side'] != crypto_db.side:
-                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto.side)
+                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto_db.side)
 
                 used_crypto.add(crypto['name'])
 
