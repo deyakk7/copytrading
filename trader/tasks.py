@@ -41,15 +41,20 @@ def calculate_stats():
         roi_deviation = math.sqrt(
             sum([(x.roi - roi) ** 2 for x in transactions]) / transactions.count()
         )
-        sharpe_ratio = round(roi / decimal.Decimal(roi_deviation), 2)
-
+        try:
+            sharpe_ratio = round(roi / decimal.Decimal(roi_deviation), 2)
+        except ZeroDivisionError:
+            sharpe_ratio = 0.00
         transactions_minus = transactions.filter(roi__lt=0)
-        if transactions_minus is not None:
-            roi_minus = round(transactions_minus.aggregate(Sum('roi'))['roi__sum'] / transactions_minus.count(), 2)
+        if transactions_minus.count() > 0:
+            roi_minus = round(transactions_minus.aggregate(roi_sum=Sum('roi'))['roi__sum'] / transactions_minus.count(), 2)
             roi_deviation_minus = math.sqrt(
                 sum([min(0, x.roi - roi_minus) ** 2 for x in transactions_minus]) / transactions_minus.count()
             )
-            sortino_ratio = round(roi / decimal.Decimal(roi_deviation_minus), 2)
+            try:
+                sortino_ratio = round(roi / decimal.Decimal(roi_deviation_minus), 2)
+            except ZeroDivisionError:
+                sortino_ratio = 0.00
 
         else:
             sortino_ratio = 0.00
