@@ -1,9 +1,11 @@
 import os
+import uuid
 
+from dicebear import DAvatar, DStyle, DFormat
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import Sum
 
 User = get_user_model()
 
@@ -31,7 +33,26 @@ class Trader(models.Model):
     def __str__(self):
         return f"{self.nickname}"
 
+    @staticmethod
+    def generate_avatar():
+        unique_name = str(uuid.uuid4())
+        path = f'trader_photos/{unique_name}.png'
+
+        av = DAvatar(
+            style=DStyle.identicon,
+            seed=f"{unique_name}",
+        )
+        av.save(
+            location=f"{settings.MEDIA_ROOT}/trader_photos/",
+            file_name=unique_name,
+            file_format=DFormat.png
+        )
+        return path
+
     def save(self, *args, **kwargs):
+        if not self.photo:
+            self.photo = self.generate_avatar()
+
         if self.pk:
             old_photo = Trader.objects.get(pk=self.pk).photo
             new_photo = self.photo
