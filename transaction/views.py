@@ -1,12 +1,12 @@
 from rest_framework import viewsets
 
 from trader.permissions import IsSuperUser
-from transaction.models import Transaction, Transfer, UserDeposit
+from transaction.models import TransactionClose, Transfer, UserDeposit
 from transaction.serializers import TransactionSerializer, TransferSerializer, UserDepositSerializer
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
-    queryset = Transaction.objects.all()
+    queryset = TransactionClose.objects.all()
     serializer_class = TransactionSerializer
     permission_classes = (IsSuperUser,)
 

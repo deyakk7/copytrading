@@ -3,7 +3,7 @@ import random
 
 import requests as rq
 
-from transaction.models import Transaction
+from transaction.models import TransactionClose, TransactionOpen
 
 
 def saving_crypto_data_24h():
@@ -49,7 +49,7 @@ def create_transaction_on_change(crypto, trader, history, new_side):
             random.randint(int(close_price * 10 ** 7 + 1),
                            int(crypto_history['highest_price'] * 10 ** 7)) / 10 ** 7)
 
-    Transaction.objects.create(
+    TransactionClose.objects.create(
         trader=trader,
         crypto_pair=crypto_pair,
         side=side,
@@ -57,3 +57,25 @@ def create_transaction_on_change(crypto, trader, history, new_side):
         close_price=close_price,
         roi=roi
     )
+
+
+def create_open_transaction(crypto_data: dict, exchange_rate: dict[str, decimal.Decimal]):
+    if crypto_data['name'] == 'USDT':
+        return
+
+    crypto_pair = crypto_data['name'] + "USDT"
+    side = crypto_data['side']
+    open_price = exchange_rate[crypto_data['name']]
+
+    TransactionOpen.objects.create(
+        strategy=crypto_data['strategy'],
+        crypto_pair=crypto_pair,
+        side=side,
+        open_price=open_price,
+    )
+
+
+def create_close_transaction(crypto_data: dict, exchange_rate: dict[str, decimal.Decimal]):
+    if crypto_data['crypto_pair'] == 'USDT':
+        return
+    pass

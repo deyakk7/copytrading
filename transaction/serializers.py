@@ -1,13 +1,13 @@
 from rest_framework import serializers
 
-from transaction.models import Transaction, Transfer, UserDeposit
+from transaction.models import TransactionClose, Transfer, UserDeposit
 
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Transaction
-        exclude = ('id', 'trader')
-        read_only_fields = ('id', 'trader')
+        model = TransactionClose
+        exclude = ('id', 'strategy')
+        read_only_fields = ('id', 'strategy')
 
 
 class TransferSerializer(serializers.ModelSerializer):

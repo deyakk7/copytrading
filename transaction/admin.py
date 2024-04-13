@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from transaction.models import Transaction
+from transaction.models import TransactionClose
 
-admin.site.register(Transaction)
+admin.site.register(TransactionClose)

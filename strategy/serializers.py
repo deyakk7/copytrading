@@ -5,14 +5,15 @@ from rest_framework import serializers
 from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
+from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
-from transaction.utils import saving_crypto_data_24h, create_transaction_on_change
+from transaction.utils import create_open_transaction
 
 
 class StrategyUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        fields = ['user', 'value', 'profit', 'strategy', 'date_of_adding', 'custom_profit', 'current_custom_profit']
+        exclude = ['saved_profit', 'custom_profit', 'current_custom_profit', 'id', 'different_profit_from_strategy']
 
     def validate(self, data):
         super().validate(data)
@@ -142,7 +143,8 @@ class StrategySerializer(serializers.ModelSerializer):
             return instance
         keep_cryptos = []
 
-        crypto_before_change = Crypto.objects.filter(strategy=instance).values('name', 'total_value', 'side')
+        crypto_before_change = (Crypto.objects.filter(strategy=instance).
+                                values('strategy', 'name', 'total_value', 'side'))
 
         for crypto in crypto_before_change:
             print(crypto)
@@ -196,34 +198,38 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto.delete()
             instance.save()
 
-            crypto_info_past_24h = saving_crypto_data_24h()
+            exchange_rate = get_current_exchange_rate_usdt()
+
             used_crypto = set()
             used_crypto.add("USDT")
 
-            for crypto in crypto_before_change:
-                if crypto['name'] == 'USDT':
+            for crypto_bf in crypto_before_change:
+                if crypto_bf['name'] == 'USDT':
                     continue
 
-                crypto_db = Crypto.objects.filter(
-                    name=crypto['name'],
+                crypto_db: Crypto = Crypto.objects.filter(
+                    name=crypto_bf['name'],
                     strategy=instance,
                 ).first()
 
                 if crypto_db is None:
-                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto.side)
+                    pass
+                    # create_transaction_on_change(crypto_bf, instance.trader, crypto_info_past_24h, crypto_bf.side)
 
-                elif crypto['total_value'] != crypto_db.total_value or crypto['side'] != crypto_db.side:
-                    create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto_db.side)
+                elif crypto_bf['total_value'] < crypto_db.total_value and crypto_bf['side'] == crypto_db.side:
+                    crypto_bf['total_value'] = crypto_db.total_value - crypto_bf['total_value']
 
-                used_crypto.add(crypto['name'])
+                    create_open_transaction(crypto_bf, exchange_rate)
 
-            unused_crypto_db = Crypto.objects.filter(
+                used_crypto.add(crypto_bf['name'])
+
+            new_crypto_db = Crypto.objects.filter(
                 strategy=instance,
             ).exclude(
                 name__in=used_crypto
-            ).values('name', 'total_value', 'side')
+            ).values('strategy', 'name', 'total_value', 'side')
 
-            for crypto in unused_crypto_db:
-                create_transaction_on_change(crypto, instance.trader, crypto_info_past_24h, crypto['side'])
+            for crypto in new_crypto_db:
+                create_open_transaction(crypto, exchange_rate)
 
         return instance

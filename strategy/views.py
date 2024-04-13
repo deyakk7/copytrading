@@ -10,13 +10,14 @@ from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
+from trader.tasks import calculate_stats
+from transaction.models import TransactionOpen
 
 
 class StrategyViewSet(ModelViewSet):
@@ -51,6 +52,26 @@ class StrategyViewSet(ModelViewSet):
             })
 
         return JsonResponse(data, safe=False)
+
+    @action(detail=True, methods=['get'])
+    def opened_transaction(self, request, *args, **kwargs):
+        transactions = TransactionOpen.objects.filter(strategy=self)
+        data = []
+        for transaction_db in transactions:
+            data.append(
+                {
+                    "id": transaction_db.id,
+                    "crypto_pair": transaction_db.crypto_pair,
+                    "open_price": transaction_db.open_price,
+                    "open_time": transaction_db.open_time,
+                    "side": transaction_db.side
+                }
+            )
+
+    @action(detail=False, methods=['get'])
+    def test(self, request, *args, **kwargs):
+        calculate_stats()
+        return JsonResponse({"ok": "pop"}, safe=False)
 
 
 class UsersCopiedListView(generics.ListAPIView):
@@ -96,8 +117,7 @@ def add_user_into_strategy(request, pk: int):
     if wallet < strategy.min_deposit or wallet < decimal.Decimal(input_data['value']):
         return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
 
-    input_data['current_custom_profit'] = strategy.current_custom_profit
-    input_data['custom_profit'] = strategy.custom_avg_profit
+    input_data['different_profit_from_strategy'] = strategy.avg_profit
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():

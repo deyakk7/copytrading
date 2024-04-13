@@ -4,8 +4,9 @@ from rest_framework import serializers
 from crypto.models import Crypto
 from strategy.models import Strategy
 from strategy.serializers import StrategySerializer
+from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
-from transaction.utils import saving_crypto_data_24h, create_transaction_on_change
+from transaction.utils import saving_crypto_data_24h, create_transaction_on_change, create_open_transaction
 
 
 class TraderSerializer(serializers.ModelSerializer):
@@ -44,14 +45,14 @@ class TraderSerializer(serializers.ModelSerializer):
         strategy_in_db = list(Strategy.objects.filter(trader=instance).values_list('id', flat=True))
         new_id = list(set(strategies_id) - set(strategy_in_db))
 
-        history_past24h = saving_crypto_data_24h()
+        exchange_rate = get_current_exchange_rate_usdt()
 
-        crypto_from_strategies = Crypto.objects.filter(strategy_id__in=new_id).values('name', 'total_value', 'side')
-
+        crypto_from_strategies = Crypto.objects.filter(strategy_id__in=new_id).values('strategy', 'name', 'total_value',
+                                                                                      'side')
         for crypto in crypto_from_strategies:
             if crypto['name'] == 'USDT':
                 continue
-            create_transaction_on_change(crypto, instance, history_past24h, crypto['side'])
+            create_open_transaction(crypto, exchange_rate)
 
         if strategies_id is not None:
             instance.strategies.set(Strategy.objects.filter(id__in=strategies_id))

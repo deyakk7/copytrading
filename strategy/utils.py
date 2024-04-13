@@ -34,8 +34,8 @@ def get_klines(symbol_input: str):
 
     response = rq.get(url, params=params)
     data = response.json()
-    close_price_previous_hour = float(data[0][4])
-    close_current_price = float(data[5][4])
+    close_price_previous_hour = (float(data[0][4]) + float(data[0][1])) / 2
+    close_current_price = float(data[5][4] + float(data[5][1])) / 2
 
     percentage_change = ((decimal.Decimal(close_current_price) - decimal.Decimal(
         close_price_previous_hour)) / decimal.Decimal(close_price_previous_hour)) * decimal.Decimal(100)
@@ -78,7 +78,7 @@ def get_current_exchange_rate_usdt():
     return result
 
 
-def get_last_percentage_change_by_5_minutes():
+def get_last_percentage_change():
     unique_crypto_names = Crypto.objects.values_list('name', flat=True).distinct()
 
     result = {}
