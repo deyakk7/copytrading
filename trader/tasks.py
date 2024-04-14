@@ -87,21 +87,19 @@ def calculate_stats():
 
         trader.save()
 
-
     return 'Stats calculated'
 
 
 def run_calculate_stats():
-    schedule, _ = IntervalSchedule.objects.get_or_create(every=1, period=IntervalSchedule.MINUTES)
+    schedule, _ = IntervalSchedule.objects.get_or_create(every=30, period=IntervalSchedule.SECONDS)
 
-    task = PeriodicTask.objects.update_or_create(
+    PeriodicTask.objects.update_or_create(
         name='calculate_stats',
         task='trader.tasks.calculate_stats',
         defaults={
             'interval': schedule,
         }
     )
-    return task
 
 
 run_calculate_stats()

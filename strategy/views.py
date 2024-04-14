@@ -16,8 +16,7 @@ from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
-from trader.tasks import calculate_stats
-from transaction.models import TransactionOpen
+from transaction.models import TransactionOpen, TransactionClose
 
 
 class StrategyViewSet(ModelViewSet):
@@ -54,8 +53,9 @@ class StrategyViewSet(ModelViewSet):
         return JsonResponse(data, safe=False)
 
     @action(detail=True, methods=['get'])
-    def opened_transaction(self, request, *args, **kwargs):
-        transactions = TransactionOpen.objects.filter(strategy=self)
+    def opened_transactions(self, request, *args, **kwargs):
+
+        transactions = TransactionOpen.objects.filter(strategy=self.get_object())
         data = []
         for transaction_db in transactions:
             data.append(
@@ -64,14 +64,32 @@ class StrategyViewSet(ModelViewSet):
                     "crypto_pair": transaction_db.crypto_pair,
                     "open_price": transaction_db.open_price,
                     "open_time": transaction_db.open_time,
+                    "total_value": transaction_db.total_value,
                     "side": transaction_db.side
                 }
             )
+        return JsonResponse(data, status=200, safe=False)
 
-    @action(detail=False, methods=['get'])
-    def test(self, request, *args, **kwargs):
-        calculate_stats()
-        return JsonResponse({"ok": "pop"}, safe=False)
+    @action(detail=True, methods=['get'])
+    def closed_transactions(self, request, *args, **kwargs):
+        transactions = TransactionClose.objects.filter(strategy=self.get_object())
+        data = []
+
+        for transaction_db in transactions:
+            data.append(
+                {
+                    "id": transaction_db.id,
+                    "crypto_pair": transaction_db.crypto_pair,
+                    "open_price": transaction_db.open_price,
+                    "close_price": transaction_db.close_price,
+                    "close_time": transaction_db.close_time,
+                    "roi": transaction_db.roi,
+                    "total_value": transaction_db.total_value,
+                    "side": transaction_db.side,
+                }
+            )
+
+        return JsonResponse(data, status=200, safe=False)
 
 
 class UsersCopiedListView(generics.ListAPIView):

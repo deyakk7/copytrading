@@ -4,6 +4,7 @@ import time
 from celery import shared_task
 from django.db import transaction as trans
 from django.db.models import Avg
+from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
 from strategy.models import Strategy, StrategyProfitHistory
 from strategy.utils import get_percentage_change, get_current_exchange_rate_pair
@@ -14,6 +15,7 @@ from transaction.models import TransactionOpen
 @shared_task
 def calculate_avg_profit():
     strategies = Strategy.objects.exclude(trader=None)
+    exchange_rate = get_current_exchange_rate_pair()
 
     for strategy in strategies:
         opened_transactions = TransactionOpen.objects.filter(strategy=strategy)
@@ -23,8 +25,6 @@ def calculate_avg_profit():
 
         avg_profit = 0
 
-        exchange_rate = get_current_exchange_rate_pair()
-
         for transaction in opened_transactions:
             r[transaction.crypto_pair] = get_percentage_change(
                 transaction.crypto_pair,
@@ -32,7 +32,7 @@ def calculate_avg_profit():
                 exchange_rate,
             )
 
-            w[transaction.crypto_pair] = transaction.open_price
+            w[transaction.crypto_pair] = transaction.total_value
 
             if transaction.side == 'long':
                 avg_profit += (w[transaction.crypto_pair] / decimal.Decimal(100)) * r[transaction.crypto_pair]
@@ -58,51 +58,14 @@ def calculate_avg_profit():
         for trader in Trader.objects.all():
             trader.refresh_from_db()
 
-            trader_profit = trader.objects.aggregate(Avg('strategies__avg_profit'))['strategies__avg_profit']
+            aggregation_result = trader.strategies.aggregate(avg_profit=Avg('avg_profit'))
 
-            if trader_profit is None:
-                trader_profit = 0
+            trader_profit = aggregation_result['avg_profit'] or 0
 
             trader.avg_profit_strategies = trader_profit
-
             trader.save()
 
     return 'done avg profit for strategies, traders, users_in_strategy'
-    # r = get_last_percentage_change()
-    # strategies = Strategy.objects.exclude(trader=None)
-    #
-    # for strategy in strategies:
-    #     avg_profit = 0
-    #     w = dict()
-    #
-    #     all_cryptos = strategy.crypto.all()
-    #     for crypto in all_cryptos:
-    #         w[crypto.name] = crypto.total_value
-    #
-    #     for crypto in all_cryptos:
-    #         if crypto.side == 'long':
-    #             avg_profit += (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
-    #         else:
-    #             avg_profit -= (w[crypto.name.upper()] / decimal.Decimal(100)) * r[crypto.name.upper()]
-    #
-    #     with trans.atomic():
-    #         strategy.refresh_from_db()
-    #         strategy.avg_profit += avg_profit
-    #         for user in strategy.users.all():
-    #             user.profit += avg_profit
-    #             user.save()
-    #         strategy.save()
-    #
-    # for trader in Trader.objects.all():
-    #     with trans.atomic():
-    #         trader.refresh_from_db()
-    #
-    #         avg_profit = trader.strategies.aggregate(avg_profit=models.Avg('avg_profit'))['avg_profit']
-    #
-    #         trader.avg_profit_strategies = avg_profit
-    #         trader.save()
-    #
-    # return 'done avg profit for strategies, traders, users_in_strategy'
 
 
 @shared_task
@@ -127,24 +90,25 @@ def saving_avg_profit():
     return "saving avg_profit and traders' profit"
 
 
-@shared_task
-def change_custom_profit(pk: int, data: dict):
-    strategy = Strategy.objects.get(pk=pk)
-    n = int(data['minutes'])
-    percent = (decimal.Decimal(data['new_percentage_change_profit']) - strategy.custom_avg_profit) / n
-    current_percent = percent
-    while n > 0:
-        with trans.atomic():
-            strategy.refresh_from_db()
-            strategy.current_custom_profit = current_percent
-            strategy.save()
-        time.sleep(1 * 60)
-        current_percent += percent
-        n -= 1
-    with trans.atomic():
-        strategy.refresh_from_db()
-        strategy.current_custom_profit = 0
-        strategy.custom_avg_profit = data['new_percentage_change_profit']
-        strategy.save()
+def strategy_task_runner():
+    schedule_calculate_avg, _ = IntervalSchedule.objects.get_or_create(every=30, period=IntervalSchedule.SECONDS)
+    schedule_saving_avg, _ = IntervalSchedule.objects.get_or_create(every=10, period=IntervalSchedule.MINUTES)
 
-    return 'done custom avg profit'
+    PeriodicTask.objects.update_or_create(
+        name='calculate_avg_profit',
+        task='strategy.tasks.calculate_avg_profit',
+        defaults={
+            'interval': schedule_calculate_avg,
+        }
+    )
+
+    PeriodicTask.objects.update_or_create(
+        name='saving_avg_profit',
+        task='strategy.tasks.saving_avg_profit',
+        defaults={
+            'interval': schedule_saving_avg,
+        }
+    )
+
+
+strategy_task_runner()

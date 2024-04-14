@@ -11,6 +11,7 @@ User = get_user_model()
 class Strategy(models.Model):
     name = models.CharField(max_length=100)
     avg_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    saved_avg_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     custom_avg_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     current_custom_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     about = models.TextField()

@@ -3,6 +3,8 @@ import random
 
 import requests as rq
 
+from strategy.models import Strategy
+from strategy.utils import get_percentage_change
 from transaction.models import TransactionClose, TransactionOpen
 
 
@@ -63,19 +65,50 @@ def create_open_transaction(crypto_data: dict, exchange_rate: dict[str, decimal.
     if crypto_data['name'] == 'USDT':
         return
 
+    strategy = crypto_data['strategy']
     crypto_pair = crypto_data['name'] + "USDT"
     side = crypto_data['side']
     open_price = exchange_rate[crypto_data['name']]
+    total_value = crypto_data['total_value']
 
     TransactionOpen.objects.create(
-        strategy=crypto_data['strategy'],
+        strategy_id=strategy,
         crypto_pair=crypto_pair,
         side=side,
         open_price=open_price,
+        total_value=total_value,
     )
 
 
-def create_close_transaction(crypto_data: dict, exchange_rate: dict[str, decimal.Decimal]):
-    if crypto_data['crypto_pair'] == 'USDT':
+def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[str, decimal.Decimal]):
+    if crypto_data.crypto_pair == 'USDT':
         return
-    pass
+
+    strategy = crypto_data.strategy
+    crypto_pair = crypto_data.crypto_pair
+    side = crypto_data.side
+    open_price = crypto_data.open_price
+    close_price = exchange_rate[crypto_pair[:-4]]
+    total_value = crypto_data.total_value
+
+    if open_price > close_price and side == "short" or open_price < close_price and side == "long":
+        roi = random.randint(100, 7000) / 100
+    else:
+        roi = random.randint(-4000, -100) / 100
+
+    percentage_change = get_percentage_change(crypto_pair[:-4], open_price, exchange_rate)
+
+    saved_profit = (total_value / 100) * percentage_change
+
+    TransactionClose.objects.create(
+        strategy=strategy,
+        crypto_pair=crypto_pair,
+        side=side,
+        open_price=open_price,
+        close_price=close_price,
+        total_value=total_value,
+        roi=roi
+    )
+
+    strategy.saved_avg_profit += saved_profit
+    strategy.save()
