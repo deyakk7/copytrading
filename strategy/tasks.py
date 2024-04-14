@@ -72,18 +72,18 @@ def calculate_avg_profit():
 @trans.atomic()
 def saving_avg_profit():
     for strategy in Strategy.objects.exclude(trader=None):
-        # strategy_last_data = StrategyProfitHistory.objects.filter(strategy=strategy).last()
-        #
-        # if strategy_last_data.value == strategy.avg_profit:
-        #     continue
+        strategy_last_data = StrategyProfitHistory.objects.filter(strategy=strategy).last()
+
+        if strategy_last_data.value == strategy.avg_profit:
+            continue
 
         StrategyProfitHistory.objects.create(strategy=strategy, value=strategy.avg_profit)
 
     for trader in Trader.objects.all():
-        # trader_last_data = TraderProfitHistory.objects.filter(trader=trader).last()
-        #
-        # if trader_last_data.value == trader.roi:
-        #     continue
+        trader_last_data = TraderProfitHistory.objects.filter(trader=trader).last()
+
+        if trader_last_data.value == trader.roi:
+            continue
 
         TraderProfitHistory.objects.create(trader=trader, value=trader.roi)
 
