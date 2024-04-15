@@ -8,3 +8,7 @@ class CryptoSerializer(serializers.ModelSerializer):
         model = Crypto
         exclude = ('strategy', 'id')
         read_only_fields = ('id', 'strategy')
+
+
+class CryptoPairSerializer(serializers.Serializer):
+    cryptos = serializers.ListField(child=serializers.CharField())

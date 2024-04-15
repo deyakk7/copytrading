@@ -12,11 +12,13 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from crypto.serializers import CryptoPairSerializer
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
     UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import TransactionOpen, TransactionClose
+from transaction.serializers import TransactionSerializer
 
 
 class StrategyViewSet(ModelViewSet):
@@ -90,6 +92,35 @@ class StrategyViewSet(ModelViewSet):
             )
 
         return JsonResponse(data, status=200, safe=False)
+
+    @action(detail=True, methods=['post'], serializer_class=CryptoPairSerializer)
+    def get_opened_transaction_by_names(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            strategy = self.get_object()
+            cryptos = serializer.validated_data.get('cryptos')
+
+            response_data = []
+
+            for crypto in cryptos:
+                transactions_db = TransactionOpen.objects.filter(
+                    strategy=strategy,
+                    crypto_pair=crypto + "USDT"
+                )
+
+                if transactions_db.count() > 1:
+                    for transaction_db in transactions_db:
+                        response_data.append(transaction_db)
+
+            if len(response_data) == 0:
+                return JsonResponse({'error': 'No suitable transactions'}, status=404)
+
+            response_serializer = TransactionSerializer(response_data, many=True)
+
+            return Response(response_serializer.data)
+
+        return JsonResponse({'error': 'Invalid request data'}, status=400)
 
 
 class UsersCopiedListView(generics.ListAPIView):
