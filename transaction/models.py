@@ -24,6 +24,7 @@ class TransactionClose(models.Model):
     total_value = models.DecimalField(max_digits=30, decimal_places=2, default=0)
     side = models.CharField(max_length=10, choices=TRANSACTION_SIDE_TYPES, default='long')
     open_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    open_time = models.DateTimeField(default=timezone.now)
     close_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
     close_time = models.DateTimeField(default=timezone.now)
     roi = models.DecimalField(max_digits=30, decimal_places=7, default=0)

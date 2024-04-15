@@ -6,7 +6,7 @@ from django.db.models import Sum, Avg
 from django.utils import timezone
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
-from trader.utils import random_time_full_change, random_time_small_change
+from trader.utils import random_time_full_change, random_time_small_change, get_avg_holding_time
 from transaction.models import TransactionClose
 from .models import Trader
 
@@ -41,10 +41,7 @@ def calculate_stats():
 
         weekly_trades = round(transactions.count() / math.ceil(max((current_time - first_trade_time).days, 1) / 7), 2)
 
-        if trader.avg_holding_time == "No info":
-            avg_holding_time = random_time_full_change()
-        else:
-            avg_holding_time = random_time_small_change(trader.avg_holding_time)
+        avg_holding_time = get_avg_holding_time(transactions)
 
         roi_deviation = math.sqrt(
             sum([(x.roi - roi) ** 2 for x in transactions]) / transactions.count()

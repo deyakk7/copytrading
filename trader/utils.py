@@ -1,4 +1,9 @@
+import datetime
 import random
+
+from django.db.models import QuerySet, ExpressionWrapper, F, Avg, fields
+
+from transaction.models import TransactionClose
 
 
 def random_time_full_change():
@@ -52,3 +57,32 @@ def random_time_small_change(holding_time: str):
         return f"{days} {str_time}"
 
     return f"{time + '1'} {str_time}"
+
+
+def get_avg_holding_time(transactions: QuerySet[TransactionClose]):
+    avg_holding_seconds = transactions.annotate(
+        holding_time=ExpressionWrapper(F('close_time') - F('open_time'), output_field=fields.DurationField())
+    ).aggregate(avg_holding_time=Avg('holding_time'))
+
+    avg_holding_time = avg_holding_seconds['avg_holding_time']
+
+    if avg_holding_time is not None:
+
+        total_seconds = avg_holding_time.total_seconds()
+
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        if days > 1:
+            avg_holding_str = f"{int(days)}.{int(hours / 24 * 10)} days"
+        elif hours > 1:
+            avg_holding_str = f"{int(hours)}.{int(minutes / 60 * 10)} hours"
+        elif minutes > 1:
+            avg_holding_str = f"{int(minutes)}.{int(seconds / 60 * 10)} minutes"
+        else:
+            avg_holding_str = f"{int(seconds)} seconds"
+    else:
+        avg_holding_str = "No data"
+
+    return avg_holding_str

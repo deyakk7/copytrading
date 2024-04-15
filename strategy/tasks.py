@@ -74,6 +74,10 @@ def saving_avg_profit():
     for strategy in Strategy.objects.exclude(trader=None):
         strategy_last_data = StrategyProfitHistory.objects.filter(strategy=strategy).last()
 
+        if strategy_last_data is None:
+            StrategyProfitHistory.objects.create(strategy=strategy, value=0)
+            continue
+
         if strategy_last_data.value == strategy.avg_profit:
             continue
 
@@ -81,6 +85,10 @@ def saving_avg_profit():
 
     for trader in Trader.objects.all():
         trader_last_data = TraderProfitHistory.objects.filter(trader=trader).last()
+
+        if trader_last_data is None:
+            TraderProfitHistory.objects.create(trader=trader, value=0)
+            continue
 
         if trader_last_data.value == trader.roi:
             continue

@@ -88,6 +88,7 @@ def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[s
     crypto_pair = crypto_data.crypto_pair
     side = crypto_data.side
     open_price = crypto_data.open_price
+    open_time = crypto_data.open_time
     close_price = exchange_rate[crypto_pair[:-4]]
     total_value = crypto_data.total_value
 
@@ -107,7 +108,8 @@ def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[s
         open_price=open_price,
         close_price=close_price,
         total_value=total_value,
-        roi=roi
+        roi=roi,
+        open_time=open_time
     )
 
     strategy.saved_avg_profit += saved_profit
