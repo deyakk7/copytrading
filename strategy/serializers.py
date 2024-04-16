@@ -142,10 +142,13 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
         instance.custom_avg_profit = validated_data.get('custom_avg_profit', instance.custom_avg_profit)
+
         if instance.trader:
             current_available_copiers = instance.trader.max_copiers - instance.trader.copiers_count
+
             if validated_data.get('total_copiers') is not None:
                 if validated_data.get('total_copiers') - instance.total_copiers > current_available_copiers:
+
                     raise serializers.ValidationError(
                         {'error': 'Total copiers must be less than max copiers in trader'})
 
@@ -153,6 +156,7 @@ class StrategySerializer(serializers.ModelSerializer):
                     Strategy.objects.filter(trader=instance.trader).aggregate(
                         total_copiers_sum=Sum('total_copiers'))[
                         'total_copiers_sum'] - instance.total_copiers + validated_data.get('total_copiers')
+
                 instance.trader.save()
                 instance.total_copiers = validated_data.get('total_copiers', instance.total_copiers)
 
@@ -261,7 +265,6 @@ class StrategySerializer(serializers.ModelSerializer):
                     if transaction_data_ is not None:
                         transaction_op.total_value -= transaction_data_
 
-                        transaction_op.save() if transaction_op.total_value else transaction_op.delete()
                         if transaction_op.total_value:
                             transaction_op.save()
 

@@ -7,6 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import Crypto
 from strategy.models import UsersInStrategy
+from transaction.models import TransactionOpen, TransactionClose
 from transaction.serializers import TransactionSerializer
 from .models import Trader
 from .permissions import IsSuperUserOrReadOnly
@@ -65,3 +66,21 @@ class TraderViewSet(ModelViewSet):
         response['get_cryptos_in_percentage'] = result_dict
 
         return JsonResponse(response, safe=False)
+
+    @action(detail=True, methods=['get'])
+    def get_open_transactions(self, request, *args, **kwargs):
+        trader = self.get_object()
+
+        transactions = TransactionOpen.objects.filter(strategy__trader=trader).order_by('-open_time')
+        serializer = TransactionSerializer(transactions, many=True)
+
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def get_close_transactions(self, request, *args, **kwargs):
+        trader = self.get_object()
+
+        transactions = TransactionClose.objects.filter(strategy__trader=trader).order_by('-close_time')
+        serializer = TransactionSerializer(transactions, many=True)
+
+        return Response(serializer.data)
