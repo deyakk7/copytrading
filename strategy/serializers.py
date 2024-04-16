@@ -115,21 +115,11 @@ class StrategySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
 
         usdt_value = 100 - sum_of_percent
-        exchange_rate = get_current_exchange_rate_usdt()
 
         if usdt_value != 0:
             Crypto.objects.create(strategy=strategy, name='USDT', total_value=usdt_value, side=None)
         for crypto_data in cryptos_data:
-            obj = Crypto.objects.create(strategy=strategy, **crypto_data)
-
-            data = {
-                "name": obj.name,
-                "total_value": obj.total_value,
-                "strategy": strategy.id,
-                "side": obj.side,
-            }
-
-            create_open_transaction(data, exchange_rate)
+            Crypto.objects.create(strategy=strategy, **crypto_data)
 
         return strategy
 
@@ -229,6 +219,9 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.save()
 
         exchange_rate = get_current_exchange_rate_usdt()
+
+        if instance.trader is None:
+            return instance
 
         used_crypto = set()
         used_crypto.add("USDT")
