@@ -42,18 +42,6 @@ class TraderSerializer(serializers.ModelSerializer):
         if strategies_id is None:
             return instance
 
-        strategy_in_db = list(Strategy.objects.filter(trader=instance).values_list('id', flat=True))
-        new_id = list(set(strategies_id) - set(strategy_in_db))
-
-        exchange_rate = get_current_exchange_rate_usdt()
-
-        crypto_from_strategies = Crypto.objects.filter(strategy_id__in=new_id).values('strategy', 'name', 'total_value',
-                                                                                      'side')
-        for crypto in crypto_from_strategies:
-            if crypto['name'] == 'USDT':
-                continue
-            create_open_transaction(crypto, exchange_rate)
-
         if strategies_id is not None:
             instance.strategies.set(Strategy.objects.filter(id__in=strategies_id))
         return instance
