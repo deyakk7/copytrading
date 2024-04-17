@@ -264,7 +264,7 @@ class StrategySerializer(serializers.ModelSerializer):
                         transaction_op.total_value = transaction_data_
                         create_close_transaction(transaction_op, exchange_rate)
 
-                        if transaction_op.total_value == 0:
+                        if transaction_op.total_value - transaction_data_ == 0:
                             transaction_op.delete()
 
                     else:
