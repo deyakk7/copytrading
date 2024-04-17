@@ -256,6 +256,9 @@ class StrategySerializer(serializers.ModelSerializer):
                     transaction_data_ = open_transaction_to_change.get(transaction_op.id, None)
 
                     if transaction_data_ is not None:
+                        transaction_save_value = transaction_op.total_value
+                        print(transaction_save_value)
+
                         transaction_op.total_value -= transaction_data_
 
                         if transaction_op.total_value:
@@ -264,7 +267,7 @@ class StrategySerializer(serializers.ModelSerializer):
                         transaction_op.total_value = transaction_data_
                         create_close_transaction(transaction_op, exchange_rate)
 
-                        if transaction_op.total_value - transaction_data_ == 0:
+                        if transaction_save_value - transaction_data_ == 0:
                             transaction_op.delete()
 
                     else:
