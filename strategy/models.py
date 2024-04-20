@@ -15,6 +15,7 @@ class Strategy(models.Model):
     custom_avg_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     current_custom_profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     about = models.TextField()
+    trader_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
     total_deposited = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
     min_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     max_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)

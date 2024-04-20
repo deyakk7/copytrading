@@ -19,6 +19,7 @@ class Trader(models.Model):
     max_copiers = models.IntegerField(default=10, validators=[MinValueValidator(1)])
     copiers_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     visible = models.BooleanField(default=False)
+    deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
 
     roi = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     win_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, blank=True, null=True)

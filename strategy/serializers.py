@@ -33,6 +33,15 @@ class StrategyUserSerializer(serializers.ModelSerializer):
         return data
 
 
+class StrategyDepositingSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+    trader_deposit = serializers.DecimalField(max_digits=30, decimal_places=2, required=False)
+
+    class Meta:
+        model = Strategy
+        fields = ['id', 'trader_deposit']
+
+
 class UserCopingStrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
@@ -78,12 +87,13 @@ class StrategySerializer(serializers.ModelSerializer):
     users = StrategyUserSerializer(many=True, read_only=True)
     custom_avg_profit = serializers.DecimalField(max_digits=30, decimal_places=7, read_only=True)
     total_copiers = serializers.IntegerField(required=False)
+    trader_deposit = serializers.DecimalField(max_digits=30, decimal_places=2, required=False)
 
     class Meta:
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
                   'total_deposited', 'users', 'total_copiers', 'custom_avg_profit',
-                  'current_custom_profit']
+                  'current_custom_profit', 'trader_deposit']
 
     def __init__(self, *args, **kwargs):
         super(StrategySerializer, self).__init__(*args, **kwargs)
@@ -132,6 +142,7 @@ class StrategySerializer(serializers.ModelSerializer):
         instance.min_deposit = validated_data.get('min_deposit', instance.min_deposit)
         instance.max_deposit = validated_data.get('max_deposit', instance.max_deposit)
         instance.custom_avg_profit = validated_data.get('custom_avg_profit', instance.custom_avg_profit)
+        instance.trader_deposit = validated_data.get('trader_deposit', instance.trader_deposit)
 
         if instance.trader:
             current_available_copiers = instance.trader.max_copiers - instance.trader.copiers_count
