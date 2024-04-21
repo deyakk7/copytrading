@@ -9,7 +9,7 @@ from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
 from transaction.models import TransactionOpen
 from transaction.serializers import TransactionOpenListSerializer
-from transaction.utils import create_open_transaction, create_close_transaction
+from transaction.utils import create_open_transaction, create_close_transaction, averaging_open_transaction
 
 
 class StrategyUserSerializer(serializers.ModelSerializer):
@@ -175,6 +175,10 @@ class StrategySerializer(serializers.ModelSerializer):
 
         keep_cryptos = []
 
+        total_percent_of_existing_crypto = Crypto.objects.filter(strategy=instance, name='USDT').first()
+
+        print(total_percent_of_existing_crypto.total_value)
+
         crypto_before_change = (Crypto.objects.filter(strategy=instance).
                                 values('strategy', 'name', 'total_value', 'side'))
 
@@ -190,12 +194,14 @@ class StrategySerializer(serializers.ModelSerializer):
             crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
 
             if crypto:
+                if crypto_data.get('total_value', 0) > crypto.total_value:
+                    sum_of_percent += crypto.total_value # TODO FIX IT
+
                 crypto.total_value = crypto_data.get('total_value', crypto.total_value)
                 crypto.side = crypto_data.get('side', crypto.side)
 
                 crypto.save()
 
-                sum_of_percent += crypto.total_value
                 keep_cryptos.append(crypto.id)
                 continue
 
@@ -258,9 +264,12 @@ class StrategySerializer(serializers.ModelSerializer):
                     transaction.delete()
 
             elif crypto_bf['total_value'] < crypto_db.total_value and crypto_bf['side'] == crypto_db.side:
-                crypto_bf['total_value'] = crypto_db.total_value - crypto_bf['total_value']
+                transaction_op = TransactionOpen.objects.filter(
+                    strategy=instance,
+                    crypto_pair=crypto_db.name + "USDT"
+                ).first()
 
-                create_open_transaction(crypto_bf, exchange_rate)
+                averaging_open_transaction(crypto_bf, crypto_db, transaction_op, exchange_rate)
 
             elif crypto_bf['total_value'] > crypto_db.total_value and crypto_bf['side'] == crypto_db.side:
                 for transaction_op in opened_transactions:

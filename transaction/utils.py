@@ -1,8 +1,10 @@
 import decimal
 import random
+from math import gcd
 
 import requests as rq
 
+from crypto.models import Crypto
 from strategy.models import Strategy
 from strategy.utils import get_percentage_change
 from transaction.models import TransactionClose, TransactionOpen
@@ -114,3 +116,19 @@ def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[s
 
     strategy.saved_avg_profit += saved_profit
     strategy.save()
+
+
+def averaging_open_transaction(crypto_bf: dict, crypto_db: Crypto, transaction_op: TransactionOpen, exchange_rate):
+    total_value_bf = crypto_bf['total_value']
+    total_value_new = crypto_db.total_value - crypto_bf['total_value']
+
+    open_price_bf = transaction_op.open_price
+    open_price_new = exchange_rate[crypto_db.name]
+
+    new_open_price = ((total_value_bf * open_price_bf + total_value_new * open_price_new) /
+                      (total_value_new + total_value_bf))
+
+    transaction_op.total_value = crypto_db.total_value
+    transaction_op.open_price = new_open_price
+
+    transaction_op.save()
