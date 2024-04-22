@@ -66,7 +66,7 @@ class StrategyViewSet(ModelViewSet):
                     "crypto_pair": transaction_db.crypto_pair,
                     "open_price": transaction_db.open_price,
                     "open_time": transaction_db.open_time,
-                    "total_value": transaction_db.total_value,
+                    "total_value": transaction_db.percentage,
                     "side": transaction_db.side
                 }
             )
@@ -86,7 +86,7 @@ class StrategyViewSet(ModelViewSet):
                     "close_price": transaction_db.close_price,
                     "close_time": transaction_db.close_time,
                     "roi": transaction_db.roi,
-                    "total_value": transaction_db.total_value,
+                    "total_value": transaction_db.percentage,
                     "side": transaction_db.side,
                 }
             )

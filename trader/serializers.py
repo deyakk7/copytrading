@@ -70,11 +70,21 @@ class TraderSerializer(serializers.ModelSerializer):
         crypto_from_strategies = (Crypto.objects.filter(strategy_id__in=new_id).
                                   values('strategy', 'name', 'total_value', 'side'))
 
+        list_of_created_transactions = []
+
         for crypto in crypto_from_strategies:
             if crypto['name'] == 'USDT':
                 continue
 
-            # create_open_transaction(crypto, exchange_rate)
+            crypto_db = Crypto.objects.filter(strategy_id=crypto['strategy'], name=crypto['name']).first()
+
+            list_of_created_transactions.append(create_open_transaction(crypto_db, exchange_rate))
+
+        sum_of_money = 0
+
+        for transaction_op in list_of_created_transactions:
+            sum_of_money += transaction_op.open_price * transaction_op.value
+
 
         if strategies_id is not None:
             instance.strategies.set(Strategy.objects.filter(id__in=strategies_dict.keys()))
@@ -82,6 +92,7 @@ class TraderSerializer(serializers.ModelSerializer):
             for strategy_id, deposit in strategies_dict.items():
                 strategy = Strategy.objects.get(id=strategy_id)
                 strategy.trader_deposit = deposit
+                strategy.available_pool = deposit
                 strategy.save()
 
         return instance

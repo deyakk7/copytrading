@@ -148,7 +148,9 @@ class StrategySerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        if cryptos_data is None:
+        crypto_pool_input = validated_data.get('new_cryptos', [])
+
+        if cryptos_data is None and crypto_pool_input is None:
             return instance
 
         """ 
@@ -160,10 +162,8 @@ class StrategySerializer(serializers.ModelSerializer):
 
         exchange_rate = get_current_exchange_rate_usdt()
 
-        crypto_pool_input = validated_data.get('new_cryptos', [])
-
         crypto_pool = {x['name']: {
-            'total_value': x['total_value'],
+            'total_value': (x['total_value'] / 100 * instance.available_pool) / instance.trader_deposit,
             'side': x['side']
         } for x in crypto_pool_input if x['name'] != 'USDT'}
 
@@ -177,12 +177,16 @@ class StrategySerializer(serializers.ModelSerializer):
             if crypto_db.name == 'USDT':
                 continue
 
-            current_crypto_value = crypto_names.get(crypto_db.name, None)
+            current_crypto_value = crypto_names.get(crypto_db.name, 0)
 
             '''If admin delete the crypto'''
-            if current_crypto_value is None:
-                # TODO rewrite close transaction with real roi
-                create_close_transaction(crypto_db, exchange_rate=exchange_rate)
+            if current_crypto_value == 0:
+                open_transaction = TransactionOpen.objects.filter(
+                    strategy=instance,
+                    crypto_pair=crypto_db.name + "USDT"
+                ).first()
+
+                create_close_transaction(open_transaction, exchange_rate=exchange_rate)
                 crypto_db.delete()
 
             elif current_crypto_value > crypto_db.total_value:
@@ -190,21 +194,65 @@ class StrategySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'error': 'You cannot add some percentage in this modal'})
 
             elif current_crypto_value < crypto_db.total_value:
-                crypto_db.total_value -= current_crypto_value
-                create_close_transaction(crypto_db, exchange_rate)
+                open_transaction = TransactionOpen.objects.filter(
+                    strategy=instance,
+                    crypto_pair=crypto_db.name + "USDT"
+                ).first()
+
+                open_transaction.percentage -= current_crypto_value
+                create_close_transaction(open_transaction, exchange_rate)
+
+                open_transaction.percentage = current_crypto_value
+                crypto_db.total_value = current_crypto_value
+
+                open_transaction.save()
+                crypto_db.save()
 
         '''Step 2. Look for new crypto and add more percentage to current from pool'''
         for name, value in crypto_pool.items():
-            crypto_db = Crypto.objects.filter(
+            crypto_db: Crypto = Crypto.objects.filter(
                 strategy=instance,
                 name=name
             ).first()
 
             '''if there no opened transaction with this crypto name'''
-            # if crypto_db is None:
-            #     create_open_transaction()
-            #
-            # else:
-            #     averaging_open_transaction()
+            if crypto_db is None:
+                crypto_db_new = Crypto.objects.create(
+                    name=name,
+                    strategy=instance,
+                    total_value=value['total_value'],
+                    side=value['side'],
+                )
+
+                create_open_transaction(crypto_db_new, exchange_rate)
+
+            elif crypto_db.side != value['side']:
+                open_transaction: TransactionOpen = TransactionOpen.objects.filter(
+                    strategy=instance,
+                    crypto_pair=name + "USDT"
+                ).first()
+
+                create_close_transaction(open_transaction, exchange_rate)
+                open_transaction.delete()
+
+                crypto_db.side = value['side']
+                crypto_db.total_value = value['total_value']
+
+                crypto_db.save()
+
+                create_open_transaction(crypto_data=crypto_db, exchange_rate=exchange_rate)
+
+            else:
+                crypto_db.total_value += value['total_value']
+                crypto_db.save()
+
+                open_transaction = TransactionOpen.objects.filter(
+                    strategy=instance,
+                    crypto_pair=name + "USDT",
+                ).first()
+
+                averaging_open_transaction(crypto_db, open_transaction, exchange_rate)
+
+
 
         return instance

@@ -1,66 +1,9 @@
 import decimal
 import random
-from math import gcd
-
-import requests as rq
 
 from crypto.models import Crypto
-from strategy.models import Strategy
 from strategy.utils import get_percentage_change
 from transaction.models import TransactionClose, TransactionOpen
-
-
-def saving_crypto_data_24h():
-    binance_url = "https://api.binance.com/api/v3/ticker/24hr"
-    response = rq.get(binance_url)
-    data = response.json()
-    result = {}
-    for token in data:
-        if token['symbol'][-4:] != 'USDT' or token['highPrice'] == '0.00000000':
-            continue
-
-        result[
-            token['symbol']
-        ] = {
-            "highest_price": decimal.Decimal(token['highPrice']),
-            "lowest_price": decimal.Decimal(token['lowPrice']),
-        }
-
-    return result
-
-
-def create_transaction_on_change(crypto, trader, history, new_side):
-    binance_url = "https://api.binance.com/api/v3/ticker/price"
-
-    crypto_pair = crypto['name'] + "USDT"
-    response = rq.get(f"{binance_url}?symbol={crypto_pair}")
-    data = response.json()
-
-    close_price = round(decimal.Decimal(data['price']), 7)
-    roi = decimal.Decimal(random.randint(-1000, 5000) / 100)
-
-    crypto_history = history[crypto_pair]
-    side = new_side
-
-    while roi == 0:
-        roi = decimal.Decimal(random.randint(-1000, 5000) / 100)
-    if roi > 0 and side == "long" or roi < 0 and side == 'short':
-        open_price = decimal.Decimal(
-            random.randint(int(crypto_history['lowest_price'] * 10 ** 7),
-                           int(close_price * 10 ** 7 - 1)) / 10 ** 7)
-    else:
-        open_price = decimal.Decimal(
-            random.randint(int(close_price * 10 ** 7 + 1),
-                           int(crypto_history['highest_price'] * 10 ** 7)) / 10 ** 7)
-
-    TransactionClose.objects.create(
-        trader=trader,
-        crypto_pair=crypto_pair,
-        side=side,
-        open_price=open_price,
-        close_price=close_price,
-        roi=roi
-    )
 
 
 def create_open_transaction(crypto_data: Crypto, exchange_rate: dict[str, decimal.Decimal]):
@@ -73,36 +16,39 @@ def create_open_transaction(crypto_data: Crypto, exchange_rate: dict[str, decima
     open_price = exchange_rate[crypto_data.name]
     total_value = crypto_data.total_value
 
-    TransactionOpen.objects.create(
-        strategy_id=strategy,
+    current_pool_money = crypto_data.strategy.available_pool
+
+    value = ((total_value / 100) * current_pool_money) / open_price
+
+    return TransactionOpen.objects.create(
+        strategy=strategy,
         crypto_pair=crypto_pair,
         side=side,
         open_price=open_price,
         percentage=total_value,
-        value=0
+        value=value
     )
 
 
-def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[str, decimal.Decimal]):
-    if crypto_data.crypto_pair == 'USDT':
-        return
+def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: dict[str, decimal.Decimal]):
 
-    strategy = crypto_data.strategy
-    crypto_pair = crypto_data.crypto_pair
-    side = crypto_data.side
-    open_price = crypto_data.open_price
-    open_time = crypto_data.open_time
+    strategy = transaction_data.strategy
+    crypto_pair = transaction_data.crypto_pair
+    side = transaction_data.side
+    open_price = transaction_data.open_price
+    open_time = transaction_data.open_time
     close_price = exchange_rate[crypto_pair[:-4]]
-    total_value = crypto_data.total_value
-
-    if open_price > close_price and side == "short" or open_price < close_price and side == "long":
-        roi = random.randint(100, 7000) / 100
-    else:
-        roi = random.randint(-4000, -100) / 100
+    percentage = transaction_data.percentage
+    value = transaction_data.value
 
     percentage_change = get_percentage_change(crypto_pair[:-4], open_price, exchange_rate)
 
-    saved_profit = (total_value / 100) * percentage_change
+    income = transaction_data.value * close_price
+    costs = transaction_data.value * open_price
+
+    roi = ((income - costs) / costs) * 100
+
+    saved_profit = (percentage / 100) * percentage_change
 
     TransactionClose.objects.create(
         strategy=strategy,
@@ -110,7 +56,8 @@ def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[s
         side=side,
         open_price=open_price,
         close_price=close_price,
-        total_value=total_value,
+        percentage=percentage,
+        value=value,
         roi=roi,
         open_time=open_time
     )
@@ -119,17 +66,20 @@ def create_close_transaction(crypto_data: TransactionOpen, exchange_rate: dict[s
     strategy.save()
 
 
-def averaging_open_transaction(crypto_bf: dict, crypto_db: Crypto, transaction_op: TransactionOpen, exchange_rate):
-    total_value_bf = crypto_bf['total_value']
-    total_value_new = crypto_db.total_value - crypto_bf['total_value']
+def averaging_open_transaction(crypto_db: Crypto, transaction_op: TransactionOpen, exchange_rate):
 
-    open_price_bf = transaction_op.open_price
-    open_price_new = exchange_rate[crypto_db.name]
+    current_available_pool = transaction_op.strategy.available_pool
+    money = ((crypto_db.total_value - transaction_op.percentage) / 100) * current_available_pool
 
-    new_open_price = ((total_value_bf * open_price_bf + total_value_new * open_price_new) /
-                      (total_value_new + total_value_bf))
+    value = money / exchange_rate[crypto_db.name]
+    total_sum_value = value + transaction_op.value
 
-    transaction_op.total_value = crypto_db.total_value
-    transaction_op.open_price = new_open_price
+    old_percentage_crypto = float(transaction_op.value) / float(total_sum_value)
+    new_percentage_crypto = float(value) / float(total_sum_value)
+
+    new_open_price = old_percentage_crypto * transaction_op.value + new_percentage_crypto * value
+
+    transaction_op.open_price = decimal.Decimal(new_open_price)
+    transaction_op.value += value
 
     transaction_op.save()
