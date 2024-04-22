@@ -32,7 +32,7 @@ def calculate_avg_profit():
                 exchange_rate,
             )
 
-            w[transaction.crypto_pair] = transaction.total_value
+            w[transaction.crypto_pair] = transaction.percentage
 
             if transaction.side == 'long':
                 avg_profit += (w[transaction.crypto_pair] / decimal.Decimal(100)) * r[transaction.crypto_pair]

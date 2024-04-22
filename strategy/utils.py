@@ -1,8 +1,10 @@
 import decimal
 
 import requests as rq
+from rest_framework import serializers
 
 from crypto.models import Crypto
+from strategy.models import Strategy
 
 
 def get_token_name():
@@ -86,3 +88,42 @@ def get_last_percentage_change():
         result[name] = get_klines(name)
 
     return result
+
+
+def update_all_cryptos(strategy: Strategy, crypto_data: dict):
+    usdt_value = 100 - sum([x['total_value'] for x in crypto_data if x['name'] != 'USDT'])
+
+    crypto_names_new = [x['name'] for x in crypto_data if x['name'] != 'USDT']
+
+    if usdt_value < 0:
+        raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
+
+    if usdt_value > 0:
+        crypto_names_new.append("USDT")
+
+        Crypto.objects.update_or_create(
+            name='USDT',
+            strategy=strategy,
+            defaults={
+                'side': None,
+                'total_value': usdt_value
+            }
+        )
+
+    crypto_to_delete = Crypto.objects.filter(
+        strategy=strategy,
+    ).exclude(
+        name__in=crypto_names_new
+    )
+
+    crypto_to_delete.delete()
+
+    for crypto in crypto_data:
+        Crypto.objects.update_or_create(
+            name=crypto['name'],
+            strategy=strategy,
+            defaults={
+                'side': crypto['side'],
+                'total_value': crypto['total_value']
+            }
+        )

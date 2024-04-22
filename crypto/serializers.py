@@ -12,3 +12,9 @@ class CryptoSerializer(serializers.ModelSerializer):
 
 class CryptoPairSerializer(serializers.Serializer):
     cryptos = serializers.ListField(child=serializers.CharField())
+
+
+class NewCryptoForStrategy(serializers.ModelSerializer):
+    class Meta:
+        model = Crypto
+        fields = ['name', 'total_value', 'side']

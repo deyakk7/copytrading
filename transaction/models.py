@@ -21,7 +21,8 @@ TRANSACTION_SIDE_TYPES = (
 class TransactionClose(models.Model):
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE)
     crypto_pair = models.CharField(max_length=10)
-    total_value = models.DecimalField(max_digits=30, decimal_places=2, default=0)
+    value = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    percentage = models.DecimalField(max_digits=30, decimal_places=2, default=0)
     side = models.CharField(max_length=10, choices=TRANSACTION_SIDE_TYPES, default='long')
     open_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
     open_time = models.DateTimeField(default=timezone.now)
@@ -38,7 +39,8 @@ class TransactionOpen(models.Model):
     crypto_pair = models.CharField(max_length=10)
     side = models.CharField(max_length=10, choices=TRANSACTION_SIDE_TYPES, default='long')
     open_price = models.DecimalField(max_digits=30, decimal_places=7, default=0)
-    total_value = models.DecimalField(max_digits=30, decimal_places=2, default=0)
+    value = models.DecimalField(max_digits=30, decimal_places=7, default=0)
+    percentage = models.DecimalField(max_digits=30, decimal_places=2, default=0)
     open_time = models.DateTimeField(default=timezone.now)
 
     def __str__(self):

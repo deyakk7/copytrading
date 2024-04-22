@@ -93,35 +93,6 @@ class StrategyViewSet(ModelViewSet):
 
         return JsonResponse(data, status=200, safe=False)
 
-    @action(detail=True, methods=['post'], serializer_class=CryptoPairSerializer)
-    def get_opened_transaction_by_names(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-
-        if serializer.is_valid():
-            strategy = self.get_object()
-            cryptos = serializer.validated_data.get('cryptos')
-
-            response_data = []
-
-            for crypto in cryptos:
-                transactions_db = TransactionOpen.objects.filter(
-                    strategy=strategy,
-                    crypto_pair=crypto + "USDT"
-                )
-
-                if transactions_db.count() > 1:
-                    for transaction_db in transactions_db:
-                        response_data.append(transaction_db)
-
-            if len(response_data) == 0:
-                return JsonResponse({'error': 'No suitable transactions'}, status=404)
-
-            response_serializer = TransactionSerializer(response_data, many=True)
-
-            return Response(response_serializer.data)
-
-        return JsonResponse({'error': 'Invalid request data'}, status=400)
-
 
 class UsersCopiedListView(generics.ListAPIView):
     serializer_class = StrategyUserListSerializer

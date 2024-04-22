@@ -3,12 +3,11 @@ from django.db.models import Sum
 from rest_framework import serializers
 
 from crypto.models import Crypto
-from crypto.serializers import CryptoSerializer
+from crypto.serializers import CryptoSerializer, NewCryptoForStrategy
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
-from strategy.utils import get_current_exchange_rate_usdt
+from strategy.utils import get_current_exchange_rate_usdt, update_all_cryptos
 from trader.models import Trader
 from transaction.models import TransactionOpen
-from transaction.serializers import TransactionOpenListSerializer
 from transaction.utils import create_open_transaction, create_close_transaction, averaging_open_transaction
 
 
@@ -100,7 +99,7 @@ class StrategySerializer(serializers.ModelSerializer):
         request = self.context.get('request')
 
         if request and request.method in ['PUT', 'PATCH']:
-            self.fields['open_transaction_list'] = TransactionOpenListSerializer(many=True, required=False)
+            self.fields['new_cryptos'] = NewCryptoForStrategy(many=True, required=False)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -115,21 +114,7 @@ class StrategySerializer(serializers.ModelSerializer):
         if cryptos_data is None:
             return strategy
 
-        sum_of_percent = 0
-        for crypto_data in cryptos_data:
-            if crypto_data['name'] == 'USDT':
-                continue
-            sum_of_percent += crypto_data['total_value']
-
-        if sum_of_percent > 100:
-            raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
-
-        usdt_value = 100 - sum_of_percent
-
-        if usdt_value != 0:
-            Crypto.objects.create(strategy=strategy, name='USDT', total_value=usdt_value, side=None)
-        for crypto_data in cryptos_data:
-            Crypto.objects.create(strategy=strategy, **crypto_data)
+        update_all_cryptos(strategy=strategy, crypto_data=cryptos_data)
 
         return strategy
 
@@ -163,159 +148,59 @@ class StrategySerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        # open_transaction_to_change = {}
-        # open_transaction_list = validated_data.get("open_transaction_list", None)
-        #
-        # if open_transaction_list:
-        #     for item in open_transaction_list:
-        #         open_transaction_to_change[item['transaction_id']] = item['value_change']
-        #
-        # if cryptos_data is None:
-        #     return instance
-        #
-        # keep_cryptos = []
-        #
-        # total_percent_of_existing_crypto = Crypto.objects.filter(strategy=instance, name='USDT').first()
-        #
-        # print(total_percent_of_existing_crypto.total_value)
-        #
-        # crypto_before_change = (Crypto.objects.filter(strategy=instance).
-        #                         values('strategy', 'name', 'total_value', 'side'))
-        #
-        # for crypto in crypto_before_change:
-        #     print(crypto)
-        #
-        # sum_of_percent = 0
-        #
-        # for crypto_data in cryptos_data:
-        #     if crypto_data['name'] == 'USDT':
-        #         continue
-        #
-        #     crypto = instance.crypto.filter(name=crypto_data['name'], strategy=instance).first()
-        #
-        #     if crypto:
-        #         if crypto_data.get('total_value', 0) > crypto.total_value:
-        #             sum_of_percent += crypto.total_value # TODO FIX IT
-        #
-        #         crypto.total_value = crypto_data.get('total_value', crypto.total_value)
-        #         crypto.side = crypto_data.get('side', crypto.side)
-        #
-        #         crypto.save()
-        #
-        #         keep_cryptos.append(crypto.id)
-        #         continue
-        #
-        #     c = Crypto.objects.create(strategy=instance, **crypto_data)
-        #
-        #     sum_of_percent += c.total_value
-        #     keep_cryptos.append(c.id)
-        #
-        # usdt_crypto = instance.crypto.filter(name='USDT', strategy=instance).first()
-        #
-        # if sum_of_percent > 100:
-        #     trans.set_rollback(True)
-        #     raise serializers.ValidationError({'error': 'Sum of percent must be less or equal than 100'})
-        #
-        # needed_percentage = 100 - sum_of_percent
-        #
-        # if needed_percentage == 0 and usdt_crypto:
-        #     usdt_crypto.delete()
-        #
-        # elif needed_percentage and usdt_crypto:
-        #     usdt_crypto.total_value = needed_percentage
-        #     usdt_crypto.save()
-        #     keep_cryptos.append(usdt_crypto.id)
-        #
-        # else:
-        #     c = Crypto.objects.create(strategy=instance, name="USDT", total_value=needed_percentage, side=None)
-        #     keep_cryptos.append(c.id)
-        #
-        # for crypto in instance.crypto.all():
-        #     if crypto.id not in keep_cryptos:
-        #         crypto.delete()
-        # instance.save()
-        #
-        # exchange_rate = get_current_exchange_rate_usdt()
-        #
-        # if instance.trader is None:
-        #     return instance
-        #
-        # used_crypto = set()
-        # used_crypto.add("USDT")
-        #
-        # for crypto_bf in crypto_before_change:
-        #     if crypto_bf['name'] == 'USDT':
-        #         continue
-        #
-        #     crypto_db: Crypto = Crypto.objects.filter(
-        #         name=crypto_bf['name'],
-        #         strategy=instance,
-        #     ).first()
-        #
-        #     opened_transactions = TransactionOpen.objects.filter(
-        #         strategy=instance,
-        #         crypto_pair=crypto_bf['name'] + "USDT",
-        #     )
-        #
-        #     if crypto_db is None:
-        #         for transaction in opened_transactions:
-        #             create_close_transaction(transaction, exchange_rate)
-        #
-        #             transaction.delete()
-        #
-        #     elif crypto_bf['total_value'] < crypto_db.total_value and crypto_bf['side'] == crypto_db.side:
-        #         transaction_op = TransactionOpen.objects.filter(
-        #             strategy=instance,
-        #             crypto_pair=crypto_db.name + "USDT"
-        #         ).first()
-        #
-        #         averaging_open_transaction(crypto_bf, crypto_db, transaction_op, exchange_rate)
-        #
-        #     elif crypto_bf['total_value'] > crypto_db.total_value and crypto_bf['side'] == crypto_db.side:
-        #         for transaction_op in opened_transactions:
-        #             transaction_data_ = open_transaction_to_change.get(transaction_op.id, None)
-        #
-        #             if transaction_data_ is not None:
-        #                 transaction_save_value = transaction_op.total_value
-        #                 print(transaction_save_value)
-        #
-        #                 transaction_op.total_value -= transaction_data_
-        #
-        #                 if transaction_op.total_value:
-        #                     transaction_op.save()
-        #
-        #                 transaction_op.total_value = transaction_data_
-        #                 create_close_transaction(transaction_op, exchange_rate)
-        #
-        #                 if transaction_save_value - transaction_data_ == 0:
-        #                     transaction_op.delete()
-        #
-        #             else:
-        #                 transaction_op.total_value = (crypto_bf['total_value'] - crypto_db.total_value)
-        #
-        #                 create_close_transaction(transaction_op, exchange_rate)
-        #
-        #                 transaction_op.total_value = crypto_db.total_value
-        #                 transaction_op.save()
-        #
-        #     elif crypto_bf['side'] != crypto_db.side:
-        #         for transaction_op in opened_transactions:
-        #             create_close_transaction(transaction_op, exchange_rate)
-        #             transaction_op.delete()
-        #
-        #         crypto_bf['side'] = crypto_db.side
-        #         crypto_bf['total_value'] = crypto_db.total_value
-        #         create_open_transaction(crypto_bf, exchange_rate)
-        #
-        #     used_crypto.add(crypto_bf['name'])
-        #
-        # new_crypto_db = Crypto.objects.filter(
-        #     strategy=instance,
-        # ).exclude(
-        #     name__in=used_crypto
-        # ).values('strategy', 'name', 'total_value', 'side')
-        #
-        # for crypto in new_crypto_db:
-        #     create_open_transaction(crypto, exchange_rate)
+        if cryptos_data is None:
+            return instance
+
+        """ 
+        if trader is not setup we have to change only crypto to new value without any transaction logic 
+        """
+        if instance.trader is None:
+            update_all_cryptos(strategy=instance, crypto_data=cryptos_data)
+            return instance
+
+        exchange_rate = get_current_exchange_rate_usdt()
+
+        crypto_pool_input = validated_data.get('new_cryptos', [])
+        print(crypto_pool_input)
+
+        crypto_pool = {x['name']: {
+            'total_value': x['total_value'],
+            'side': x['side']
+        } for x in crypto_pool_input if x['name'] != 'USDT'}
+
+        print(crypto_pool)
+
+        cryptos_db = Crypto.objects.filter(
+            strategy=instance
+        )
+        crypto_names = {x['name']: x['total_value'] for x in cryptos_data if x['name'] != 'USDT'}
+
+        '''Step 1. Looks for deleted and decreases crypto'''
+        for crypto_db in cryptos_db:
+            if crypto_db.name == 'USDT':
+                continue
+
+            current_crypto_value = crypto_names.get(crypto_db.name, None)
+
+            '''If admin delete the crypto'''
+            if current_crypto_value is None:
+                # TODO rewrite close transaction with real roi
+                create_close_transaction(crypto_db, exchange_rate=exchange_rate)
+                crypto_db.delete()
+
+            elif current_crypto_value > crypto_db.total_value:
+                trans.set_rollback(True)
+                raise serializers.ValidationError({'error': 'You cannot add some percentage in this modal'})
+
+            elif current_crypto_value < crypto_db.total_value:
+                crypto_db.total_value -= current_crypto_value
+                create_close_transaction(crypto_db, exchange_rate)
+
+        '''Step 2. Look for new crypto and add more percentage to current from pool'''
+        for key, value in crypto_pool.items():
+            crypto_db = Crypto.objects.filter(
+                strategy=instance,
+                name=key
+            ).first()
 
         return instance
