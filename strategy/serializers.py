@@ -161,14 +161,11 @@ class StrategySerializer(serializers.ModelSerializer):
         exchange_rate = get_current_exchange_rate_usdt()
 
         crypto_pool_input = validated_data.get('new_cryptos', [])
-        print(crypto_pool_input)
 
         crypto_pool = {x['name']: {
             'total_value': x['total_value'],
             'side': x['side']
         } for x in crypto_pool_input if x['name'] != 'USDT'}
-
-        print(crypto_pool)
 
         cryptos_db = Crypto.objects.filter(
             strategy=instance
@@ -197,10 +194,17 @@ class StrategySerializer(serializers.ModelSerializer):
                 create_close_transaction(crypto_db, exchange_rate)
 
         '''Step 2. Look for new crypto and add more percentage to current from pool'''
-        for key, value in crypto_pool.items():
+        for name, value in crypto_pool.items():
             crypto_db = Crypto.objects.filter(
                 strategy=instance,
-                name=key
+                name=name
             ).first()
+
+            '''if there no opened transaction with this crypto name'''
+            # if crypto_db is None:
+            #     create_open_transaction()
+            #
+            # else:
+            #     averaging_open_transaction()
 
         return instance

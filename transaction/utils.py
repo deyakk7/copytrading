@@ -63,22 +63,23 @@ def create_transaction_on_change(crypto, trader, history, new_side):
     )
 
 
-def create_open_transaction(crypto_data: dict, exchange_rate: dict[str, decimal.Decimal]):
-    if crypto_data['name'] == 'USDT':
+def create_open_transaction(crypto_data: Crypto, exchange_rate: dict[str, decimal.Decimal]):
+    if crypto_data.name == 'USDT':
         return
 
-    strategy = crypto_data['strategy']
-    crypto_pair = crypto_data['name'] + "USDT"
-    side = crypto_data['side']
-    open_price = exchange_rate[crypto_data['name']]
-    total_value = crypto_data['total_value']
+    strategy = crypto_data.strategy
+    crypto_pair = crypto_data.name + "USDT"
+    side = crypto_data.side
+    open_price = exchange_rate[crypto_data.name]
+    total_value = crypto_data.total_value
 
     TransactionOpen.objects.create(
         strategy_id=strategy,
         crypto_pair=crypto_pair,
         side=side,
         open_price=open_price,
-        total_value=total_value,
+        percentage=total_value,
+        value=0
     )
 
 

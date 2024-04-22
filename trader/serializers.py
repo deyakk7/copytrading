@@ -35,7 +35,7 @@ class TraderSerializer(serializers.ModelSerializer):
         result_dict = [
             {
                 'name': crypto['name'],
-                'side': crypto['side'],
+                'side': 'L' if crypto['side'] == 'long' else 'S',
                 'percentage': round(crypto['percentage'], 2)
             }
             for crypto in crypto_values
