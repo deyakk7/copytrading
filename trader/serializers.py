@@ -1,5 +1,6 @@
 from django.db import transaction as trans
-from django.db.models import Sum
+from django.db.models import Sum, FloatField, F, ExpressionWrapper
+from django.db.models.functions import Cast
 from rest_framework import serializers
 
 from crypto.models import Crypto
@@ -22,13 +23,23 @@ class TraderSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
-        result = Crypto.objects.filter(strategy__trader=instance).values('name').annotate(total=Sum('total_value'))
-        result_dict = {item['name']: item['total'] for item in result}
+        total_value_sum = float(Crypto.objects.aggregate(total_sum=Sum('total_value'))['total_sum'])
 
-        summary = sum(result_dict.values())
+        crypto_values = Crypto.objects.values('name', 'side') \
+            .annotate(total_value_group=Sum('total_value')) \
+            .annotate(percentage=ExpressionWrapper(
+                Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
+                output_field=FloatField()
+            ))
 
-        for key, value in result_dict.items():
-            result_dict[key] = round(value / summary * 100, 2)
+        result_dict = [
+            {
+                'name': crypto['name'],
+                'side': crypto['side'],
+                'percentage': round(crypto['percentage'], 2)
+            }
+            for crypto in crypto_values
+        ]
 
         data['get_cryptos_in_percentage'] = result_dict
         data['strategies_id'] = StrategyDepositingSerializer(instance.strategies.all(), many=True).data
