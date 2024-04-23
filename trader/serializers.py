@@ -1,3 +1,5 @@
+import decimal
+
 from django.db import transaction as trans
 from django.db.models import Sum, FloatField, F, ExpressionWrapper
 from django.db.models.functions import Cast
@@ -8,6 +10,7 @@ from strategy.models import Strategy
 from strategy.serializers import StrategySerializer, StrategyDepositingSerializer
 from strategy.utils import get_current_exchange_rate_usdt
 from trader.models import Trader
+from transaction.models import TransactionOpen
 from transaction.utils import create_open_transaction
 
 
@@ -65,34 +68,41 @@ class TraderSerializer(serializers.ModelSerializer):
         strategy_in_db = list(Strategy.objects.filter(trader=instance).values_list('id', flat=True))
         new_id = list(set(strategies_dict.keys()) - set(strategy_in_db))
 
+        instance.strategies.set(Strategy.objects.filter(id__in=strategies_dict.keys()))
+
+        for strategy_id, deposit in strategies_dict.items():
+            strategy = Strategy.objects.get(id=strategy_id)
+            strategy.trader_deposit = deposit
+            strategy.available_pool = deposit
+
+            strategy.save()
+
         exchange_rate = get_current_exchange_rate_usdt()
 
-        crypto_from_strategies = (Crypto.objects.filter(strategy_id__in=new_id).
-                                  values('strategy', 'name', 'total_value', 'side'))
-
-        list_of_created_transactions = []
+        crypto_from_strategies = Crypto.objects.filter(strategy_id__in=new_id)
 
         for crypto in crypto_from_strategies:
-            if crypto['name'] == 'USDT':
+            if crypto.name == 'USDT':
                 continue
 
-            crypto_db = Crypto.objects.filter(strategy_id=crypto['strategy'], name=crypto['name']).first()
+            create_open_transaction(crypto, exchange_rate, crypto.total_value)
 
-            list_of_created_transactions.append(create_open_transaction(crypto_db, exchange_rate))
+        for st_id in new_id:
+            transactions = TransactionOpen.objects.filter(
+                strategy_id=st_id
+            )
+            if len(transactions) == 0:
+                continue
 
-        sum_of_money = 0
+            sum_of_money = 0
+            percentage_value = 0
 
-        for transaction_op in list_of_created_transactions:
-            sum_of_money += transaction_op.open_price * transaction_op.value
+            for transaction_op in transactions:
+                sum_of_money += transaction_op.open_price * transaction_op.value
+                percentage_value += transaction_op.percentage
 
-
-        if strategies_id is not None:
-            instance.strategies.set(Strategy.objects.filter(id__in=strategies_dict.keys()))
-
-            for strategy_id, deposit in strategies_dict.items():
-                strategy = Strategy.objects.get(id=strategy_id)
-                strategy.trader_deposit = deposit
-                strategy.available_pool = deposit
-                strategy.save()
+            strategy_db: Strategy = Strategy.objects.filter(id=st_id).first()
+            strategy_db.available_pool = (sum_of_money * (100 - percentage_value)) / percentage_value
+            strategy_db.save()
 
         return instance

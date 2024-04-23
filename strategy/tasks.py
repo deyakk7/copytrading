@@ -7,17 +7,19 @@ from django.db.models import Avg
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
 from strategy.models import Strategy, StrategyProfitHistory
-from strategy.utils import get_percentage_change, get_current_exchange_rate_pair
+from strategy.utils import get_percentage_change, get_current_exchange_rate_pair, recalculate_percentage_in_strategy
 from trader.models import Trader, TraderProfitHistory
 from transaction.models import TransactionOpen
 
 
 @shared_task
+@trans.atomic()
 def calculate_avg_profit():
     strategies = Strategy.objects.exclude(trader=None)
     exchange_rate = get_current_exchange_rate_pair()
 
     for strategy in strategies:
+        recalculate_percentage_in_strategy(strategy, exchange_rate)
         opened_transactions = TransactionOpen.objects.filter(strategy=strategy)
 
         r = dict()

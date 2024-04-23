@@ -1,3 +1,5 @@
+import decimal
+
 from django.db import transaction as trans
 from django.db.models import Sum
 from rest_framework import serializers
@@ -5,7 +7,7 @@ from rest_framework import serializers
 from crypto.models import Crypto
 from crypto.serializers import CryptoSerializer, NewCryptoForStrategy
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
-from strategy.utils import get_current_exchange_rate_usdt, update_all_cryptos
+from strategy.utils import get_current_exchange_rate_usdt, update_all_cryptos, recalculate_percentage_in_strategy
 from trader.models import Trader
 from transaction.models import TransactionOpen
 from transaction.utils import create_open_transaction, create_close_transaction, averaging_open_transaction
@@ -92,7 +94,7 @@ class StrategySerializer(serializers.ModelSerializer):
         model = Strategy
         fields = ['id', 'name', 'cryptos', 'trader', 'about', 'avg_profit', 'max_deposit', 'min_deposit',
                   'total_deposited', 'users', 'total_copiers', 'custom_avg_profit',
-                  'current_custom_profit', 'trader_deposit']
+                  'current_custom_profit', 'trader_deposit', 'available_pool']
 
     def __init__(self, *args, **kwargs):
         super(StrategySerializer, self).__init__(*args, **kwargs)
@@ -119,7 +121,7 @@ class StrategySerializer(serializers.ModelSerializer):
         return strategy
 
     @trans.atomic()
-    def update(self, instance, validated_data):
+    def update(self, instance: Strategy, validated_data):
         cryptos_data = validated_data.pop('crypto', None)
         instance.name = validated_data.get('name', instance.name)
         instance.about = validated_data.get('about', instance.about)
@@ -134,7 +136,6 @@ class StrategySerializer(serializers.ModelSerializer):
 
             if validated_data.get('total_copiers') is not None:
                 if validated_data.get('total_copiers') - instance.total_copiers > current_available_copiers:
-
                     raise serializers.ValidationError(
                         {'error': 'Total copiers must be less than max copiers in trader'})
 
@@ -153,6 +154,19 @@ class StrategySerializer(serializers.ModelSerializer):
         if cryptos_data is None and crypto_pool_input is None:
             return instance
 
+        crypto_percentage_in_pool = {x['name']: {
+            'total_value': decimal.Decimal(x['total_value']),
+            'side': x['side']
+        } for x in crypto_pool_input if x['name'] != 'USDT'}
+
+        sum_in_modal = 0
+
+        for name, item in crypto_percentage_in_pool.items():
+            sum_in_modal += item['total_value']
+
+        if sum_in_modal > 100:
+            raise serializers.ValidationError({'error': 'Percentage cannot be more than 100'})
+
         """ 
         if trader is not setup we have to change only crypto to new value without any transaction logic 
         """
@@ -162,15 +176,10 @@ class StrategySerializer(serializers.ModelSerializer):
 
         exchange_rate = get_current_exchange_rate_usdt()
 
-        crypto_pool = {x['name']: {
-            'total_value': (x['total_value'] / 100 * instance.available_pool) / instance.trader_deposit,
-            'side': x['side']
-        } for x in crypto_pool_input if x['name'] != 'USDT'}
-
         cryptos_db = Crypto.objects.filter(
             strategy=instance
         )
-        crypto_names = {x['name']: x['total_value'] for x in cryptos_data if x['name'] != 'USDT'}
+        crypto_names = {x['name']: decimal.Decimal(x['total_value']) for x in cryptos_data if x['name'] != 'USDT'}
 
         '''Step 1. Looks for deleted and decreases crypto'''
         for crypto_db in cryptos_db:
@@ -186,12 +195,9 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto_pair=crypto_db.name + "USDT"
                 ).first()
 
-                create_close_transaction(open_transaction, exchange_rate=exchange_rate)
+                create_close_transaction(open_transaction, exchange_rate, open_transaction.percentage)
                 crypto_db.delete()
-
-            elif current_crypto_value > crypto_db.total_value:
-                trans.set_rollback(True)
-                raise serializers.ValidationError({'error': 'You cannot add some percentage in this modal'})
+                open_transaction.delete()
 
             elif current_crypto_value < crypto_db.total_value:
                 open_transaction = TransactionOpen.objects.filter(
@@ -199,8 +205,8 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto_pair=crypto_db.name + "USDT"
                 ).first()
 
-                open_transaction.percentage -= current_crypto_value
-                create_close_transaction(open_transaction, exchange_rate)
+                create_close_transaction(open_transaction, exchange_rate,
+                                         open_transaction.percentage - current_crypto_value)
 
                 open_transaction.percentage = current_crypto_value
                 crypto_db.total_value = current_crypto_value
@@ -208,7 +214,17 @@ class StrategySerializer(serializers.ModelSerializer):
                 open_transaction.save()
                 crypto_db.save()
 
+        recalculate_percentage_in_strategy(strategy=instance, exchange_rate=exchange_rate)
+        instance.refresh_from_db()
+
+        crypto_pool = {x['name']: {
+            'total_value': decimal.Decimal(
+                (x['total_value'] * instance.available_pool / 100) * 100 / instance.trader_deposit),
+            'side': x['side']
+        } for x in crypto_pool_input if x['name'] != 'USDT'}
+
         '''Step 2. Look for new crypto and add more percentage to current from pool'''
+        pool_money_decrease = 0
         for name, value in crypto_pool.items():
             crypto_db: Crypto = Crypto.objects.filter(
                 strategy=instance,
@@ -224,7 +240,12 @@ class StrategySerializer(serializers.ModelSerializer):
                     side=value['side'],
                 )
 
-                create_open_transaction(crypto_db_new, exchange_rate)
+                _, pool_money_trans = create_open_transaction(
+                    crypto_db_new,
+                    exchange_rate,
+                    crypto_percentage_in_pool[crypto_db_new.name]['total_value'],
+                )
+                pool_money_decrease += pool_money_trans
 
             elif crypto_db.side != value['side']:
                 open_transaction: TransactionOpen = TransactionOpen.objects.filter(
@@ -232,7 +253,7 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto_pair=name + "USDT"
                 ).first()
 
-                create_close_transaction(open_transaction, exchange_rate)
+                create_close_transaction(open_transaction, exchange_rate, open_transaction.percentage)
                 open_transaction.delete()
 
                 crypto_db.side = value['side']
@@ -240,10 +261,17 @@ class StrategySerializer(serializers.ModelSerializer):
 
                 crypto_db.save()
 
-                create_open_transaction(crypto_data=crypto_db, exchange_rate=exchange_rate)
+                _, pool_money_trans = create_open_transaction(
+                    crypto_data=crypto_db,
+                    exchange_rate=exchange_rate,
+                    percentage_from_pool=crypto_percentage_in_pool[crypto_db.name]['total_value']
+                )
+                pool_money_decrease += pool_money_trans
 
             else:
                 crypto_db.total_value += value['total_value']
+                print(value['total_value'])
+                print(crypto_db.total_value)
                 crypto_db.save()
 
                 open_transaction = TransactionOpen.objects.filter(
@@ -251,8 +279,35 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto_pair=name + "USDT",
                 ).first()
 
-                averaging_open_transaction(crypto_db, open_transaction, exchange_rate)
+                pool_money = averaging_open_transaction(
+                    crypto_db,
+                    open_transaction,
+                    exchange_rate,
+                    crypto_percentage_in_pool[crypto_db.name]['total_value']
+                )
 
+                pool_money_decrease += pool_money
 
+        instance.available_pool -= pool_money_decrease
+        if instance.available_pool == 0:
+            usdt_crypto = Crypto.objects.filter(
+                strategy=instance,
+                name='USDT'
+            ).first()
+
+            if usdt_crypto is not None:
+                usdt_crypto.delete()
+
+        else:
+            Crypto.objects.update_or_create(
+                strategy=instance,
+                name='USDT',
+                defaults={
+                    'total_value': (instance.available_pool / instance.trader_deposit) * 100,
+                    'side': None
+                }
+            )
+
+        instance.save()
 
         return instance

@@ -1,10 +1,12 @@
 import decimal
 
 import requests as rq
+from django.db import transaction as trans
 from rest_framework import serializers
 
 from crypto.models import Crypto
 from strategy.models import Strategy
+from transaction.models import TransactionOpen
 
 
 def get_token_name():
@@ -18,7 +20,7 @@ def get_current_exchange_rate_pair():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    return {token['symbol']: token['price'] for token in data}
+    return {token['symbol']: decimal.Decimal(token['price']) for token in data}
 
 
 def get_klines(symbol_input: str):
@@ -75,8 +77,9 @@ def get_current_exchange_rate_usdt():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    result = {token['symbol'][:-4]: decimal.Decimal(token['price']) for token in data if token['symbol'].endswith('USDT')}
-    result['USDT'] = 1
+    result = {token['symbol'][:-4]: decimal.Decimal(token['price']) for token in data if
+              token['symbol'].endswith('USDT')}
+    result['USDT'] = decimal.Decimal(1)
     return result
 
 
@@ -127,3 +130,60 @@ def update_all_cryptos(strategy: Strategy, crypto_data: dict):
                 'total_value': crypto['total_value']
             }
         )
+
+
+@trans.atomic()
+def recalculate_percentage_in_strategy(strategy: Strategy, exchange_rate: dict):
+    transactions = TransactionOpen.objects.filter(
+        strategy=strategy,
+    )
+
+    available_pool = strategy.available_pool
+    trader_deposit = available_pool
+
+    dict_data = {}
+
+    for transaction_op in transactions:
+
+        money_in_transaction = transaction_op.value * exchange_rate[transaction_op.crypto_pair]
+
+        trader_deposit += money_in_transaction
+        dict_data[transaction_op.crypto_pair[:-4]] = money_in_transaction
+
+    sum_of_trader_deposit = 0
+
+    for transaction_op in transactions:
+        token_name = transaction_op.crypto_pair[:-4]
+
+        transaction_op.percentage = (dict_data[token_name] / trader_deposit) * 100
+        transaction_op.save()
+
+        crypto_db: Crypto = Crypto.objects.filter(strategy=strategy, name=token_name).first()
+
+        crypto_db.total_value = transaction_op.percentage
+        crypto_db.save()
+
+    crypto_usdt: Crypto = Crypto.objects.filter(
+        strategy=strategy,
+        name='USDT'
+    ).first()
+
+    if available_pool == 0:
+        if crypto_usdt is not None:
+            crypto_usdt.delete()
+            return
+
+    strategy.trader_deposit = trader_deposit
+    strategy.save()
+
+    if crypto_usdt is None:
+        Crypto.objects.create(
+            strategy=strategy,
+            name='USDT',
+            total_value=(available_pool / trader_deposit) * 100,
+            side=None
+        )
+        return
+
+    crypto_usdt.total_value = (available_pool / trader_deposit) * 100
+    crypto_usdt.save()
