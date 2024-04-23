@@ -67,6 +67,8 @@ class TraderSerializer(serializers.ModelSerializer):
 
         strategy_in_db = list(Strategy.objects.filter(trader=instance).values_list('id', flat=True))
         new_id = list(set(strategies_dict.keys()) - set(strategy_in_db))
+        if len(new_id) == 0:
+            return instance
 
         instance.strategies.set(Strategy.objects.filter(id__in=strategies_dict.keys()))
 
