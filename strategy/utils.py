@@ -150,8 +150,6 @@ def recalculate_percentage_in_strategy(strategy: Strategy, exchange_rate: dict):
         trader_deposit += money_in_transaction
         dict_data[transaction_op.crypto_pair[:-4]] = money_in_transaction
 
-    sum_of_trader_deposit = 0
-
     for transaction_op in transactions:
         token_name = transaction_op.crypto_pair[:-4]
 

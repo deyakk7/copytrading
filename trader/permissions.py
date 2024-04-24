@@ -9,4 +9,4 @@ class IsSuperUser(BasePermission):
 class IsSuperUserOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_superuser or (
-                request.method in SAFE_METHODS and request.user.is_authenticated))
+                request.method in SAFE_METHODS))

@@ -214,6 +214,7 @@ class StrategySerializer(serializers.ModelSerializer):
                 open_transaction.save()
                 crypto_db.save()
 
+        instance.refresh_from_db()
         recalculate_percentage_in_strategy(strategy=instance, exchange_rate=exchange_rate)
         instance.refresh_from_db()
 
