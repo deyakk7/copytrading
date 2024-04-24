@@ -38,7 +38,7 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
     open_price = transaction_data.open_price
     open_time = transaction_data.open_time
     close_price = exchange_rate[crypto_pair[:-4]]
-    percentage = to_close_per
+    percentage = transaction_data.percentage
     value = transaction_data.value * to_close_per / percentage
     percentage_change = get_percentage_change(crypto_pair[:-4], open_price, exchange_rate)
 
@@ -47,7 +47,7 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
 
     roi = ((income - costs) / costs) * 100
 
-    saved_profit = (percentage / 100) * percentage_change
+    saved_profit = (to_close_per / 100) * percentage_change
 
     TransactionClose.objects.create(
         strategy=strategy,
@@ -55,11 +55,14 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
         side=side,
         open_price=open_price,
         close_price=close_price,
-        percentage=percentage,
+        percentage=to_close_per,
         value=value,
         roi=roi,
         open_time=open_time
     )
+
+    transaction_data.value -= value
+    transaction_data.save()
 
     strategy.available_pool += close_price * value
     strategy.saved_avg_profit += saved_profit
