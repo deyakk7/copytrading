@@ -9,6 +9,11 @@ from django.db import models
 
 User = get_user_model()
 
+TRADER_TYPES = (
+    ("Conservative", "conservative"),
+    ("Trending", "trending"),
+)
+
 
 class Trader(models.Model):
     nickname = models.CharField(max_length=50, unique=True)
@@ -20,6 +25,7 @@ class Trader(models.Model):
     copiers_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     visible = models.BooleanField(default=False)
     deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    trader_type = models.CharField(max_length=30, default=None, null=True, blank=True, choices=TRADER_TYPES)
 
     roi = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     win_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, blank=True, null=True)
@@ -51,6 +57,8 @@ class Trader(models.Model):
         return path
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
         if not self.photo:
             self.photo = self.generate_avatar()
 
@@ -62,6 +70,9 @@ class Trader(models.Model):
                     os.remove(old_photo.path)
         super(Trader, self).save(*args, **kwargs)
 
+        if is_new:
+            TraderProfitHistory.objects.create(trader=self, value=0)
+
     def get_stats(self):
         return {
             'profit_to_loss_ratio': self.profit_to_loss_ratio,
@@ -72,6 +83,9 @@ class Trader(models.Model):
             'sortino_ratio': self.sortino_ratio,
             'last_traded_at': self.last_traded_at,
         }
+
+    def get_chart_stats(self):
+        pass
 
 
 class TraderProfitHistory(models.Model):

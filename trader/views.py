@@ -1,5 +1,8 @@
-from django.db.models import Sum
+from datetime import timedelta
+
+from django.db.models import Sum, Avg
 from django.http import JsonResponse
+from django.utils.timezone import now
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,9 +12,10 @@ from crypto.models import Crypto
 from strategy.models import UsersInStrategy
 from transaction.models import TransactionOpen, TransactionClose
 from transaction.serializers import TransactionSerializer
-from .models import Trader
+from .models import Trader, TraderProfitHistory
 from .permissions import IsSuperUserOrReadOnly
 from .serializers import TraderSerializer
+from dateutil.relativedelta import relativedelta
 
 
 class TraderViewSet(ModelViewSet):
@@ -84,3 +88,103 @@ class TraderViewSet(ModelViewSet):
         serializer = TransactionSerializer(transactions, many=True)
 
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def get_profit_chart(self, request, *args, **kwargs):
+        trader = self.get_object()
+        end_date = now()
+        periods = {
+            '7days': end_date - relativedelta(days=7),
+            '1month': end_date - relativedelta(months=1),
+            '3months': end_date - relativedelta(months=3),
+            'all_time': None
+        }
+
+        chart_info = {}
+
+        for period, start_date in periods.items():
+            if start_date:
+                profits = TraderProfitHistory.objects.filter(trader=trader, date__range=[start_date, end_date])
+            else:
+                profits = TraderProfitHistory.objects.filter(trader=trader)
+
+            interval_count = 7
+
+            total_days = (end_date - (start_date if start_date else profits.earliest('date').date)).days
+            days_per_interval = total_days // interval_count
+
+            if period == 'all_time' and days_per_interval < 4:
+                days_per_interval = 4
+                start_date = end_date - relativedelta(months=1)
+
+            interval_data = []
+            for i in range(interval_count):
+                interval_start = start_date + timedelta(days=i * days_per_interval) if start_date else profits.earliest(
+                    'date').date + timedelta(days=i * days_per_interval)
+                interval_end = interval_start + timedelta(days=days_per_interval)
+
+                avg_profit = profits.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
+                                 'value__avg'] or 0
+
+                interval_data.append({
+                    'date': end_date if i == 6 else interval_end,
+                    'average_profit': avg_profit
+                })
+
+            chart_info[period] = interval_data
+
+        return JsonResponse(chart_info, safe=False)
+
+    @action(detail=True, methods=['get'])
+    def get_traders_profit_chart(self, request, *args, **kwargs):
+
+        trader = self.get_object()
+        end_date = now()
+        periods = {
+            '7days': end_date - timedelta(days=7),
+            '1month': end_date - timedelta(days=30),
+            '3months': end_date - timedelta(days=90),
+            'all_time': None
+        }
+
+        chart_info = {}
+
+        for period, start_date in periods.items():
+            if start_date:
+                traders_profit = TraderProfitHistory.objects.filter(date__range=[start_date, end_date])
+                profits = traders_profit.filter(trader=trader)
+            else:
+                traders_profit = TraderProfitHistory.objects.all()
+                profits = traders_profit.filter(trader=trader)
+
+            interval_count = 7
+
+            total_days = (end_date - (start_date if start_date else profits.earliest('date').date)).days
+            days_per_interval = total_days // interval_count
+
+            if period == 'all_time' and days_per_interval < 4:
+                days_per_interval = 4
+                start_date = end_date - relativedelta(months=1)
+
+            interval_data = []
+            for i in range(interval_count):
+                interval_start = start_date + timedelta(days=i * days_per_interval) if start_date else profits.earliest(
+                    'date').date + timedelta(days=i * days_per_interval)
+                interval_end = interval_start + timedelta(days=days_per_interval)
+
+                avg_profit = profits.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
+                                 'value__avg'] or 0
+
+                traders_avg_profit = traders_profit.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
+                                 'value__avg'] or 0
+
+                interval_data.append({
+                    'date': end_date if i == 6 else interval_end,
+                    'average_profit': avg_profit,
+                    'traders_profit': traders_avg_profit
+                })
+
+            chart_info[period] = interval_data
+
+        return JsonResponse(chart_info, safe=False)
+

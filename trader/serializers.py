@@ -1,7 +1,5 @@
-import decimal
-
 from django.db import transaction as trans
-from django.db.models import Sum, FloatField, F, ExpressionWrapper
+from django.db.models import Sum, FloatField, F, ExpressionWrapper, Count
 from django.db.models.functions import Cast
 from rest_framework import serializers
 
@@ -20,20 +18,28 @@ class TraderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Trader
-        fields = '__all__'
+        exclude = ('copiers_count', )
         read_only_fields = ('id',)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
-        total_value_sum = float(Crypto.objects.aggregate(total_sum=Sum('total_value'))['total_sum'])
+        data['strategies_id'] = StrategyDepositingSerializer(instance.strategies.all(), many=True).data
+        data['profits'] = instance.profits.all().order_by('date').values_list('value', flat=True)
+
+        total_value_sum = Crypto.objects.filter(strategy__trader=instance).aggregate(total_sum=Sum('total_value'))
+
+        if total_value_sum['total_sum'] is None:
+            return data
+
+        total_value_sum = float(total_value_sum['total_sum'])
 
         crypto_values = Crypto.objects.values('name', 'side') \
             .annotate(total_value_group=Sum('total_value')) \
             .annotate(percentage=ExpressionWrapper(
-                Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
-                output_field=FloatField()
-            ))
+            Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
+            output_field=FloatField()
+        ))
 
         result_dict = [
             {
@@ -45,8 +51,6 @@ class TraderSerializer(serializers.ModelSerializer):
         ]
 
         data['get_cryptos_in_percentage'] = result_dict
-        data['strategies_id'] = StrategyDepositingSerializer(instance.strategies.all(), many=True).data
-        data['profits'] = instance.profits.all().order_by('date').values_list('value', flat=True)
 
         return data
 
@@ -57,8 +61,6 @@ class TraderSerializer(serializers.ModelSerializer):
 
         if strategies_id is None:
             return instance
-
-        # TODO OPTIMIZE SOLUTION
 
         strategies_dict = {strategy['id']: strategy['trader_deposit'] for strategy in strategies_id}
 
@@ -108,3 +110,15 @@ class TraderSerializer(serializers.ModelSerializer):
             strategy_db.save()
 
         return instance
+
+    def update(self, instance, validated_data):
+        max_copiers = validated_data.pop('max_copiers', None)
+
+        total_copiers = Strategy.objects.filter(trader=instance).aggregate(
+            count_copiers=Count('total_copiers')
+        )['count_copiers']
+
+        if total_copiers is None or max_copiers > total_copiers:
+            validated_data['max_copiers'] = max_copiers
+
+        return super().update(instance, validated_data)
