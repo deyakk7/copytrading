@@ -25,6 +25,7 @@ class Trader(models.Model):
     copiers_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     visible = models.BooleanField(default=False)
     deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    available_deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
     trader_type = models.CharField(max_length=30, default=None, null=True, blank=True, choices=TRADER_TYPES)
 
     roi = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)

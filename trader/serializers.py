@@ -109,6 +109,9 @@ class TraderSerializer(serializers.ModelSerializer):
             strategy_db.available_pool = (sum_of_money * (100 - percentage_value)) / percentage_value
             strategy_db.save()
 
+        instance.available_deposit = instance.deposit - sum(strategies_dict.values())
+        instance.save()
+
         return instance
 
     def update(self, instance, validated_data):

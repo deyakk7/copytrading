@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Avg
 from django.http import JsonResponse
 from django.utils.timezone import now
@@ -15,7 +16,6 @@ from transaction.serializers import TransactionSerializer
 from .models import Trader, TraderProfitHistory
 from .permissions import IsSuperUserOrReadOnly
 from .serializers import TraderSerializer
-from dateutil.relativedelta import relativedelta
 
 
 class TraderViewSet(ModelViewSet):
@@ -175,8 +175,9 @@ class TraderViewSet(ModelViewSet):
                 avg_profit = profits.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
                                  'value__avg'] or 0
 
-                traders_avg_profit = traders_profit.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
-                                 'value__avg'] or 0
+                traders_avg_profit = \
+                traders_profit.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
+                    'value__avg'] or 0
 
                 interval_data.append({
                     'date': end_date if i == 6 else interval_end,
@@ -187,4 +188,3 @@ class TraderViewSet(ModelViewSet):
             chart_info[period] = interval_data
 
         return JsonResponse(chart_info, safe=False)
-
