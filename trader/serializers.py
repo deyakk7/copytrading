@@ -34,7 +34,7 @@ class TraderSerializer(serializers.ModelSerializer):
 
         total_value_sum = float(total_value_sum['total_sum'])
 
-        crypto_values = Crypto.objects.values('name', 'side') \
+        crypto_values = Crypto.objects.filter(strategy__trader=instance).values('name', 'side') \
             .annotate(total_value_group=Sum('total_value')) \
             .annotate(percentage=ExpressionWrapper(
             Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
