@@ -19,7 +19,7 @@ def calculate_stats():
         if transactions.count() == 0:
             continue
 
-        roi = round(transactions.aggregate(roi_avg=Avg('roi'))['roi_avg'], 2)
+        roi = transactions.aggregate(roi_avg=Avg('roi'))['roi_avg']
 
         try:
             profit_to_loss_ratio = round(
@@ -55,11 +55,10 @@ def calculate_stats():
         transactions_minus = transactions.filter(roi__lt=0)
 
         if transactions_minus.count() > 0:
-            roi_minus = round(
-                transactions_minus.aggregate(roi_sum=Sum('roi'))['roi_sum'] / transactions_minus.count(), 2
-            )
+            roi_minus = transactions_minus.aggregate(roi_sum=Sum('roi'))['roi_sum'] / transactions_minus.count()
+
             roi_deviation_minus = math.sqrt(
-                sum([min(0, x.roi - roi_minus) ** 2 for x in transactions_minus]) / transactions_minus.count()
+                sum([(x.roi - roi_minus) ** 2 for x in transactions_minus]) / transactions_minus.count()
             )
 
             try:
