@@ -7,7 +7,7 @@ from crypto.models import Crypto
 from strategy.models import Strategy
 from strategy.serializers import StrategySerializer, StrategyDepositingSerializer
 from strategy.utils import get_current_exchange_rate_usdt
-from trader.models import Trader
+from trader.models import Trader, TrendingThreshold
 from transaction.models import TransactionOpen
 from transaction.utils import create_open_transaction
 
@@ -126,3 +126,9 @@ class TraderSerializer(serializers.ModelSerializer):
             validated_data['max_copiers'] = max_copiers
 
         return super().update(instance, validated_data)
+
+
+class TrendingThresholdSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrendingThreshold
+        fields = '__all__'

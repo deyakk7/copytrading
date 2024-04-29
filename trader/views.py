@@ -5,17 +5,19 @@ from django.db.models import Sum, Avg
 from django.http import JsonResponse
 from django.utils.timezone import now
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import Crypto
 from strategy.models import UsersInStrategy
 from transaction.models import TransactionOpen, TransactionClose
 from transaction.serializers import TransactionSerializer
-from .models import Trader, TraderProfitHistory
-from .permissions import IsSuperUserOrReadOnly
-from .serializers import TraderSerializer
+from .models import Trader, TraderProfitHistory, TrendingThreshold
+from .permissions import IsSuperUserOrReadOnly, IsSuperUser
+from .serializers import TraderSerializer, TrendingThresholdSerializer
 
 
 class TraderViewSet(ModelViewSet):
@@ -87,6 +89,12 @@ class TraderViewSet(ModelViewSet):
         transactions = TransactionClose.objects.filter(strategy__trader=trader).order_by('-close_time')
         serializer = TransactionSerializer(transactions, many=True)
 
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def get_all_trending_traders(self, request, *args, **kwargs):
+        traders = Trader.objects.filter(trader_type='trending', visible=True)
+        serializer = TraderSerializer(traders, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
@@ -176,8 +184,8 @@ class TraderViewSet(ModelViewSet):
                                  'value__avg'] or 0
 
                 traders_avg_profit = \
-                traders_profit.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
-                    'value__avg'] or 0
+                    traders_profit.filter(date__range=[interval_start, interval_end]).aggregate(Avg('value'))[
+                        'value__avg'] or 0
 
                 interval_data.append({
                     'date': end_date if i == 6 else interval_end,
@@ -188,3 +196,19 @@ class TraderViewSet(ModelViewSet):
             chart_info[period] = interval_data
 
         return JsonResponse(chart_info, safe=False)
+
+
+class TrendingThresholdView(APIView):
+    permission_classes = (IsSuperUser, )
+
+    def get(self, request):
+        threshold = TrendingThreshold.objects.first()
+        serializer = TrendingThresholdSerializer(threshold)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = TrendingThresholdSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

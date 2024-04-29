@@ -6,13 +6,15 @@ from django.db.models import Sum, Avg
 from django.utils import timezone
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
-from trader.utils import random_time_full_change, random_time_small_change, get_avg_holding_time
+from trader.utils import get_avg_holding_time
 from transaction.models import TransactionClose
-from .models import Trader
+from .models import Trader, TrendingThreshold
 
 
 @shared_task
 def calculate_stats():
+    trending_threshold = TrendingThreshold.objects.first()
+
     for trader in Trader.objects.all():
         transactions = TransactionClose.objects.filter(strategy__trader=trader)
 
@@ -68,6 +70,11 @@ def calculate_stats():
 
         else:
             sortino_ratio = 0.00
+
+        if trader.copiers_count >= trending_threshold.min_copiers:
+            trader.trader_type = 'trending'
+        else:
+            trader.trader_type = None
 
         roi_volatility = round(roi_deviation, 2)
 

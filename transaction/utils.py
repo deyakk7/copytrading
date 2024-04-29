@@ -38,16 +38,24 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
     open_price = transaction_data.open_price
     open_time = transaction_data.open_time
     close_price = exchange_rate[crypto_pair[:-4]]
-    percentage = transaction_data.percentage
-    value = transaction_data.value * to_close_per / percentage
+
+    open_percentage = transaction_data.percentage * to_close_per
+    close_percentage = transaction_data.percentage - open_percentage
+
+    open_value = transaction_data.value * to_close_per
+    close_value = transaction_data.value - open_value
+
     percentage_change = get_percentage_change(crypto_pair[:-4], open_price, exchange_rate)
 
-    income = value * close_price
-    costs = value * open_price
+    income = close_value * close_price
+    costs = close_value * open_price
 
     roi = ((income - costs) / costs) * 100
+    roi = -roi if side == 'short' else roi
 
     saved_profit = (to_close_per / 100) * percentage_change
+
+    saved_profit = -saved_profit if side == 'short' else saved_profit
 
     TransactionClose.objects.create(
         strategy=strategy,
@@ -55,16 +63,17 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
         side=side,
         open_price=open_price,
         close_price=close_price,
-        percentage=to_close_per,
-        value=value,
+        percentage=close_percentage,
+        value=close_value,
         roi=roi,
         open_time=open_time
     )
 
-    transaction_data.value -= value
+    transaction_data.value = open_value
+    transaction_data.percentage = open_percentage
     transaction_data.save()
 
-    strategy.available_pool += close_price * value
+    strategy.available_pool += close_price * close_value
     strategy.saved_avg_profit += saved_profit
     strategy.save()
 

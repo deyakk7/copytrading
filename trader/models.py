@@ -25,13 +25,15 @@ class Trader(models.Model):
     copiers_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     visible = models.BooleanField(default=False)
     deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
-    available_deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    available_deposit = models.DecimalField(max_digits=30, decimal_places=2, default=0,
+                                            validators=[MinValueValidator(0)])
     trader_type = models.CharField(max_length=30, default=None, null=True, blank=True, choices=TRADER_TYPES)
 
     roi = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     win_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, blank=True, null=True)
     profit_to_loss_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     weekly_trades = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
+    max_drawdown = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     avg_holding_time = models.CharField(max_length=20, default='No info')
     roi_volatility = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     sharpe_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
@@ -93,3 +95,10 @@ class TraderProfitHistory(models.Model):
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='profits')
     value = models.DecimalField(default=0, decimal_places=7, max_digits=30)
     date = models.DateTimeField(auto_now_add=True)
+
+
+class TrendingThreshold(models.Model):
+    min_copiers = models.IntegerField(default=10, validators=[MinValueValidator(0)])
+
+    def __str__(self):
+        return f"Minimum Copiers for Trending: {self.min_copiers}"

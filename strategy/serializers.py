@@ -188,6 +188,10 @@ class StrategySerializer(serializers.ModelSerializer):
 
             current_crypto_value = crypto_names.get(crypto_db.name, 0)
 
+            if current_crypto_value > 100:
+                trans.set_rollback(True)
+                raise serializers.ValidationError({'error': 'Percentage cannot be more than 100'})
+
             '''If admin delete the crypto'''
             if current_crypto_value == 0:
                 open_transaction = TransactionOpen.objects.filter(
@@ -195,21 +199,19 @@ class StrategySerializer(serializers.ModelSerializer):
                     crypto_pair=crypto_db.name + "USDT"
                 ).first()
 
-                create_close_transaction(open_transaction, exchange_rate, open_transaction.percentage)
+                create_close_transaction(open_transaction, exchange_rate, current_crypto_value)
                 crypto_db.delete()
                 open_transaction.delete()
 
-            elif current_crypto_value < crypto_db.total_value:
+            else:
                 open_transaction = TransactionOpen.objects.filter(
                     strategy=instance,
                     crypto_pair=crypto_db.name + "USDT"
                 ).first()
 
-                create_close_transaction(open_transaction, exchange_rate,
-                                         open_transaction.percentage - current_crypto_value)
+                create_close_transaction(open_transaction, exchange_rate, current_crypto_value)
 
-                open_transaction.percentage = current_crypto_value
-                crypto_db.total_value = current_crypto_value
+                crypto_db.total_value = current_crypto_value * open_transaction.percentage
 
                 open_transaction.save()
                 crypto_db.save()
