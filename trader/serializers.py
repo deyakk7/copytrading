@@ -15,10 +15,11 @@ from transaction.utils import create_open_transaction
 class TraderSerializer(serializers.ModelSerializer):
     strategies = StrategySerializer(many=True, read_only=True)
     strategies_id = StrategyDepositingSerializer(many=True, required=False)
+    copiers_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Trader
-        exclude = ('copiers_count', )
+        fields = '__all__'
         read_only_fields = ('id',)
 
     def to_representation(self, instance):
@@ -37,9 +38,9 @@ class TraderSerializer(serializers.ModelSerializer):
         crypto_values = Crypto.objects.filter(strategy__trader=instance).values('name', 'side') \
             .annotate(total_value_group=Sum('total_value')) \
             .annotate(percentage=ExpressionWrapper(
-            Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
-            output_field=FloatField()
-        ))
+                Cast(F('total_value_group'), FloatField()) / total_value_sum * 100,
+                output_field=FloatField()
+            ))
 
         result_dict = [
             {
