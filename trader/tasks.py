@@ -22,6 +22,11 @@ def calculate_stats():
     for trader in Trader.objects.all():
         transactions = TransactionClose.objects.filter(strategy__trader=trader)
 
+        if trader.copiers_count >= trending_threshold.min_copiers:
+            trader.trader_type = 'trending'
+        else:
+            trader.trader_type = None
+
         if transactions.count() == 0:
             continue
 
@@ -74,11 +79,6 @@ def calculate_stats():
 
         else:
             sortino_ratio = 0.00
-
-        if trader.copiers_count >= trending_threshold.min_copiers:
-            trader.trader_type = 'trending'
-        else:
-            trader.trader_type = None
 
         roi_volatility = round(roi_deviation, 2)
 
