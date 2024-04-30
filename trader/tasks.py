@@ -27,6 +27,8 @@ def calculate_stats():
         else:
             trader.trader_type = None
 
+        trader.save()
+
         if transactions.count() == 0:
             continue
 
