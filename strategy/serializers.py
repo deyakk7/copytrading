@@ -214,7 +214,7 @@ class StrategySerializer(serializers.ModelSerializer):
 
                 create_close_transaction(open_transaction, exchange_rate, current_crypto_value)
 
-                crypto_db.total_value = current_crypto_value * open_transaction.percentage
+                crypto_db.total_value = current_crypto_value * (open_transaction.percentage / 100)
 
                 open_transaction.save()
                 crypto_db.save()
