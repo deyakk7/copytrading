@@ -15,7 +15,7 @@ from .models import Trader, TrendingThreshold
 def calculate_stats():
     trending_threshold = TrendingThreshold.objects.first()
     if trending_threshold is None:
-        TrendingThreshold.objects.create(
+        trending_threshold = TrendingThreshold.objects.create(
             min_copiers=10
         )
 
