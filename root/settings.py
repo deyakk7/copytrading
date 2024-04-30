@@ -61,7 +61,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://finrextest.com",
+    "https://www.finrex.com",
+]
 
 AUTH_USER_MODEL = 'auth_service.User'
 
