@@ -70,6 +70,11 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.finrex.com",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "https://finrextest.com",
+]
+
 AUTH_USER_MODEL = 'auth_service.User'
 
 ROOT_URLCONF = 'root.urls'
