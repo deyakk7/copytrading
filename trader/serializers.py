@@ -121,9 +121,9 @@ class TraderSerializer(serializers.ModelSerializer):
         total_copiers = Strategy.objects.filter(trader=instance).aggregate(
             count_copiers=Count('total_copiers')
         )['count_copiers']
-
-        if total_copiers is None or max_copiers > total_copiers:
-            validated_data['max_copiers'] = max_copiers
+        if max_copiers is not None:
+            if total_copiers is None or max_copiers > total_copiers:
+                validated_data['max_copiers'] = max_copiers
 
         return super().update(instance, validated_data)
 

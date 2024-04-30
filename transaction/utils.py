@@ -39,10 +39,10 @@ def create_close_transaction(transaction_data: TransactionOpen, exchange_rate: d
     open_time = transaction_data.open_time
     close_price = exchange_rate[crypto_pair[:-4]]
 
-    open_percentage = transaction_data.percentage * to_close_per
+    open_percentage = transaction_data.percentage * (to_close_per / 100)
     close_percentage = transaction_data.percentage - open_percentage
 
-    open_value = transaction_data.value * to_close_per
+    open_value = transaction_data.value * (to_close_per / 100)
     close_value = transaction_data.value - open_value
 
     percentage_change = get_percentage_change(crypto_pair[:-4], open_price, exchange_rate)

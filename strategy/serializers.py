@@ -203,6 +203,9 @@ class StrategySerializer(serializers.ModelSerializer):
                 crypto_db.delete()
                 open_transaction.delete()
 
+            elif current_crypto_value == 100:
+                continue
+
             else:
                 open_transaction = TransactionOpen.objects.filter(
                     strategy=instance,
