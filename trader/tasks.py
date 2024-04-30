@@ -14,6 +14,10 @@ from .models import Trader, TrendingThreshold
 @shared_task
 def calculate_stats():
     trending_threshold = TrendingThreshold.objects.first()
+    if trending_threshold is None:
+        TrendingThreshold.objects.create(
+            min_copiers=10
+        )
 
     for trader in Trader.objects.all():
         transactions = TransactionClose.objects.filter(strategy__trader=trader)

@@ -149,7 +149,7 @@ class StrategySerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        crypto_pool_input = validated_data.get('new_cryptos', [])
+        crypto_pool_input = validated_data.get('new_cryptos', None)
 
         if cryptos_data is None and crypto_pool_input is None:
             return instance
