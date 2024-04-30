@@ -131,4 +131,4 @@ class TraderSerializer(serializers.ModelSerializer):
 class TrendingThresholdSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrendingThreshold
-        fields = '__all__'
+        exclude = ('id',)

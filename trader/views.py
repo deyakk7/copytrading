@@ -200,13 +200,14 @@ class TraderViewSet(ModelViewSet):
 
 class TrendingThresholdView(APIView):
     permission_classes = (IsSuperUser, )
+    serializer_class = TrendingThresholdSerializer
 
     def get(self, request):
         threshold = TrendingThreshold.objects.first()
         serializer = TrendingThresholdSerializer(threshold)
         return Response(serializer.data)
 
-    def post(self, request):
+    def patch(self, request):
         serializer = TrendingThresholdSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.data
