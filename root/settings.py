@@ -63,7 +63,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://finrextest.com",
+
     "https://www.finrex.com",
 ]
 
