@@ -18,6 +18,7 @@ dicebear==2.7.3
 Django==5.0.3
 django-celery-beat==2.6.0
 django-cors-headers==4.3.1
+django-sslserver==0.12
 django-templated-mail==1.1.1
 django-timezone-field==6.1.0
 djangorestframework==3.14.0

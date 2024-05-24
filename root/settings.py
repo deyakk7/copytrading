@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'djoser',
     'corsheaders',
+    'sslserver',
 
     'crypto.apps.CryptoConfig',
     'strategy.apps.StrategyConfig',
