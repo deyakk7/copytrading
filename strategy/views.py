@@ -1,6 +1,5 @@
 import decimal
 
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db import transaction as trans
 from django.http import JsonResponse
@@ -12,13 +11,12 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from crypto.serializers import CryptoPairSerializer
 from strategy.models import Strategy, UsersInStrategy, UserOutStrategy
 from strategy.serializers import StrategySerializer, StrategyUserSerializer, StrategyUserListSerializer, \
-    UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer
+    UserCopingStrategySerializer, StrategyCustomProfitSerializer, UserOutStrategySerializer, \
+    UserUnCopingStrategySerializer
 from trader.permissions import IsSuperUserOrReadOnly, IsSuperUser
 from transaction.models import TransactionOpen, TransactionClose
-from transaction.serializers import TransactionSerializer
 
 
 class StrategyViewSet(ModelViewSet):
@@ -114,15 +112,9 @@ class UsersOutStrategyListView(generics.ListAPIView):
     request=UserCopingStrategySerializer,
 )
 @api_view(['POST'])
-@login_required()
 def add_user_into_strategy(request, pk: int):
-    if request.user.is_superuser:
-        return JsonResponse({"error": "Superuser cannot copy strategies"}, status=400)
-    wallet = request.user.wallet
-
     input_data = request.data
     input_data['strategy'] = pk
-    input_data['user'] = request.user.id
 
     strategy = Strategy.objects.get(id=pk)
 
@@ -134,15 +126,16 @@ def add_user_into_strategy(request, pk: int):
     if not current_available_copiers:
         return JsonResponse({"error": "This trader is full"}, status=400, safe=False)
 
-    if wallet < strategy.min_deposit or wallet < decimal.Decimal(input_data['value']):
-        return JsonResponse({"error": "Not enough money in wallet"}, status=400, safe=False)
+    already_in_strategy = UsersInStrategy.objects.filter(user=input_data['user'], strategy=strategy).exists()
+
+    if already_in_strategy:
+        return JsonResponse({"error": "User already in strategy"}, status=400, safe=False)
 
     input_data['different_profit_from_strategy'] = strategy.avg_profit
 
     data = StrategyUserSerializer(data=input_data)
     if data.is_valid():
         strategy.total_deposited += decimal.Decimal(input_data['value'])
-        request.user.wallet -= decimal.Decimal(input_data['value'])
 
         strategy.total_copiers += 1
         strategy.trader.copiers_count += 1
@@ -150,7 +143,6 @@ def add_user_into_strategy(request, pk: int):
         with transaction.atomic():
             strategy.trader.save()
             strategy.save()
-            request.user.save()
 
             data.save()
 
@@ -159,10 +151,12 @@ def add_user_into_strategy(request, pk: int):
     return JsonResponse(data.errors, status=400)
 
 
-@api_view(['DELETE'])
-@login_required()
+@extend_schema(
+    request=UserUnCopingStrategySerializer,
+)
+@api_view(['POST'])
 def remove_user_from_strategy(request, pk: int):
-    data: UsersInStrategy = UsersInStrategy.objects.filter(user=request.user, strategy_id=pk).first()
+    data: UsersInStrategy = UsersInStrategy.objects.filter(user=request.data['user'], strategy_id=pk).first()
     if data is None:
         return JsonResponse({"error": "User not found in strategy"}, status=404)
 
@@ -174,7 +168,7 @@ def remove_user_from_strategy(request, pk: int):
     if strategy.trader.copiers_count > 0:
         strategy.trader.copiers_count -= 1
 
-    request.user.wallet += data.value + data.profit * (data.value / decimal.Decimal(100))
+    money_to_user = data.value + data.profit * (data.value / decimal.Decimal(100))
 
     with transaction.atomic():
         UserOutStrategy.objects.create(
@@ -186,14 +180,15 @@ def remove_user_from_strategy(request, pk: int):
             date_of_out=timezone.now()
         )
 
-        request.user.save()
-
         strategy.save()
         strategy.trader.save()
 
         data.delete()
 
-    return JsonResponse({"message": "You have left the strategy successfully"}, status=200)
+    return JsonResponse({
+        "message": "You have left the strategy successfully",
+        "money_to_user": money_to_user
+    }, status=200)
 
 
 class StrategyAvailableListView(generics.ListAPIView):

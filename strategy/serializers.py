@@ -20,17 +20,6 @@ class StrategyUserSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         super().validate(data)
-
-        strategy = Strategy.objects.get(id=data['strategy'].id)
-        if strategy.users.filter(user_id=data['user']):
-            raise serializers.ValidationError({'error': "User already exists in strategy"})
-
-        if data['value'] > strategy.max_deposit:
-            raise serializers.ValidationError({"error": "Value must be less than max deposit"})
-
-        if data['value'] < strategy.min_deposit:
-            raise serializers.ValidationError({"error": "Value must be greater than min deposit"})
-
         return data
 
 
@@ -46,7 +35,13 @@ class StrategyDepositingSerializer(serializers.ModelSerializer):
 class UserCopingStrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        fields = ['value']
+        fields = ['user', 'value']
+
+
+class UserUnCopingStrategySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserOutStrategy
+        fields = ['user']
 
 
 class StrategyCustomProfitSerializer(serializers.ModelSerializer):

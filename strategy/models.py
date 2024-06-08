@@ -23,6 +23,14 @@ class Strategy(models.Model):
     total_copiers = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies', null=True, blank=True)
 
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
+        super(Strategy, self).save(*args, **kwargs)
+
+        if is_new:
+            StrategyProfitHistory.objects.create(strategy=self, value=0)
+
     def __str__(self):
         return self.name
 
@@ -34,7 +42,7 @@ class StrategyProfitHistory(models.Model):
 
 
 class UsersInStrategy(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='strategies')
+    user = models.CharField(max_length=100)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='users')
     value = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     date_of_adding = models.DateTimeField(auto_now_add=True)
@@ -49,7 +57,7 @@ class UsersInStrategy(models.Model):
 
 
 class UserOutStrategy(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='out_strategies')
+    user = models.CharField(max_length=100)
     strategy = models.ForeignKey(Strategy, on_delete=models.CASCADE, related_name='out_users')
     value = models.DecimalField(default=0, decimal_places=2, max_digits=30)
     date_of_adding = models.DateTimeField(default=timezone.now)
