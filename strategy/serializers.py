@@ -100,7 +100,8 @@ class StrategySerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['profits'] = instance.profits.all().order_by('date')[-100:].values_list('value', flat=True)
+        profits = instance.profits.all().order_by('-date')[:100].values_list('value', flat=True)
+        data['profits'] = reversed(profits)
         return data
 
     @trans.atomic()
