@@ -3,11 +3,11 @@ version: '3.8'
 services:
   django:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python manage.py runserver 0.0.0.0:5050
     volumes:
       - .:/trading_app
     ports:
-      - "8000:8000"
+      - "5050:5050"
     environment:
       - REDIS_URL=redis://redis:6379/0
     depends_on:
