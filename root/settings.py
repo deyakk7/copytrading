@@ -69,6 +69,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://finrextest.com",
     "http://finrextest.com",
     "https://www.finrex.com",
+    'http://176.120.107.23',
 ]
 
 CSRF_TRUSTED_ORIGINS = [
