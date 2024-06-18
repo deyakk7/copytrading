@@ -26,7 +26,7 @@ class TraderSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
 
         data['strategies_id'] = StrategyDepositingSerializer(instance.strategies.all(), many=True).data
-        data['profits'] = instance.profits.all().order_by('date')[:100].values_list('value', flat=True)
+        data['profits'] = instance.profits.all().order_by('date')[-100:].values_list('value', flat=True)
 
         total_value_sum = Crypto.objects.filter(strategy__trader=instance).aggregate(total_sum=Sum('total_value'))
 
