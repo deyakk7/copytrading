@@ -116,7 +116,10 @@ def add_user_into_strategy(request, pk: int):
     input_data = request.data
     input_data['strategy'] = pk
 
-    strategy = Strategy.objects.get(id=pk)
+    try:
+        strategy = Strategy.objects.get(id=pk)
+    except:
+        return JsonResponse({"error": "Strategy not found"}, status=404, safe=False)
 
     if strategy.trader is None:
         return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
