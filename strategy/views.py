@@ -177,7 +177,8 @@ def remove_user_from_strategy(request, pk: int):
             value=data.value,
             profit=data.profit,
             date_of_adding=data.date_of_adding,
-            date_of_out=timezone.now()
+            date_of_out=timezone.now(),
+            income=money_to_user
         )
 
         strategy.save()

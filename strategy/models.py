@@ -63,3 +63,4 @@ class UserOutStrategy(models.Model):
     date_of_adding = models.DateTimeField(default=timezone.now)
     date_of_out = models.DateTimeField(auto_now_add=True)
     profit = models.DecimalField(default=0, decimal_places=7, max_digits=30)
+    income = models.DecimalField(default=0, decimal_places=2, max_digits=30)

@@ -16,7 +16,7 @@ from transaction.utils import create_open_transaction, create_close_transaction,
 class StrategyUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
-        exclude = ['saved_profit', 'custom_profit', 'current_custom_profit', 'id', 'different_profit_from_strategy']
+        exclude = ['saved_profit', 'custom_profit', 'current_custom_profit', 'id']
 
     def validate(self, data):
         super().validate(data)
@@ -63,6 +63,40 @@ class UserInStrategySerializer(serializers.ModelSerializer):
     class Meta:
         model = UsersInStrategy
         fields = '__all__'
+
+
+class UserCopiedStrategySerializer(serializers.ModelSerializer):
+    current_money = serializers.SerializerMethodField()
+    trader_id = serializers.SerializerMethodField()
+    strategy_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UsersInStrategy
+        fields = ['trader_id',  'strategy_id', 'value', 'date_of_adding', 'profit', 'current_money']
+
+    def get_current_money(self, obj):
+        return obj.value + obj.value * (obj.profit / 100)
+
+    def get_trader_id(self, obj):
+        return obj.strategy.trader.id
+
+    def get_strategy_id(self, obj):
+        return obj.strategy.id
+
+
+class UserCopiedStrategyHistorySerializer(serializers.ModelSerializer):
+    trader_id = serializers.SerializerMethodField()
+    strategy_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserOutStrategy
+        fields = ['trader_id',  'strategy_id', 'value', 'date_of_adding', 'date_of_out', 'profit', 'income']
+
+    def get_trader_id(self, obj):
+        return obj.strategy.trader.id
+
+    def get_strategy_id(self, obj):
+        return obj.strategy.id
 
 
 class StrategyUserListSerializer(serializers.ModelSerializer):

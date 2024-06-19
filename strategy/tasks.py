@@ -80,6 +80,9 @@ def calculate_avg_profit():
 def saving_avg_profit():
     for strategy in Strategy.objects.exclude(trader=None):
         strategy_last_data = StrategyProfitHistory.objects.filter(strategy=strategy).last()
+        if not strategy_last_data:
+            StrategyProfitHistory.objects.create(strategy=strategy, value=0)
+            continue
 
         if strategy_last_data.value == strategy.avg_profit:
             continue

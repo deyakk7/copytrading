@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from django.db.models import Sum, Avg
 from django.http import JsonResponse
 from django.utils.timezone import now
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -12,7 +12,8 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from crypto.models import Crypto
-from strategy.models import UsersInStrategy
+from strategy.models import UsersInStrategy, UserOutStrategy
+from strategy.serializers import UserCopiedStrategySerializer, UserCopiedStrategyHistorySerializer
 from transaction.models import TransactionOpen, TransactionClose
 from transaction.serializers import TransactionSerializer
 from .models import Trader, TraderProfitHistory, TrendingThreshold
@@ -40,11 +41,31 @@ class TraderViewSet(ModelViewSet):
         self.perform_destroy(instance)
         return Response(status=204)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='user', type=str, description='User ID to filter strategies', required=False)
+        ],
+    )
     @action(detail=False, methods=['get'])
     def my(self, request, *args, **kwargs):
-        my_traders = UsersInStrategy.objects.filter(user=request.user).values_list('strategy__trader',
-                                                                                   flat=True).distinct()
-        return JsonResponse({'my_traders_copied_id': list(my_traders)}, safe=False)
+        user_id = request.query_params.get('user', request.user.id)
+        my_traders = UsersInStrategy.objects.filter(user=user_id).order_by('-date_of_adding')
+
+        data = UserCopiedStrategySerializer(my_traders, many=True).data
+        return Response(data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='user', type=str, description='User ID to filter strategies', required=False)
+        ],
+    )
+    @action(detail=False, methods=['get'])
+    def my_history_copy(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user', request.user.id)
+        my_traders = UserOutStrategy.objects.filter(user=user_id).order_by('-date_of_out')
+
+        data = UserCopiedStrategyHistorySerializer(my_traders, many=True).data
+        return Response(data, status=status.HTTP_200_OK)
 
     @extend_schema(
         responses=TransactionSerializer(many=True),
