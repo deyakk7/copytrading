@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Exit immediately if a command exits with a non-zero status.
+# Exit immediately if a commands exits with a non-zero status.
 set -e
 
 # Run Django migrations
