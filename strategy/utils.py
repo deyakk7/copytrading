@@ -8,12 +8,145 @@ from crypto.models import Crypto
 from strategy.models import Strategy
 from transaction.models import TransactionOpen
 
+TOKEN_AVAILABLE_LIST = [
+    "BTC",
+    "LTC",
+    "DOGE",
+    "DASH",
+    "ETH",
+    "WAVES",
+    "GLM",
+    "MKR",
+    "MLN",
+    "RLC",
+    "GNO",
+    "BAT",
+    "BNT",
+    "NMR",
+    "FUN",
+    "SNT",
+    "ADX",
+    "STORJ",
+    "MTL",
+    "OMG",
+    "DENT",
+    "ZRX",
+    "LRC",
+    "TRX",
+    "MANA",
+    "LINK",
+    "VIB",
+    "REQ",
+    "ENJ",
+    "POWR",
+    "ERC20",
+    "IOST",
+    "AGIX",
+    "BLZ",
+    "REN",
+    "LOOM",
+    "DOCK",
+    "NEXO",
+    "IOTX",
+    "NKN",
+    "QKC",
+    "QNT",
+    "USDC",
+    "FTM",
+    "LPT",
+    "LTO",
+    "WBTC",
+    "FET",
+    "ANKR",
+    "CELR",
+    "MATIC",
+    "OCEAN",
+    "IDEX",
+    "RSR",
+    "COTI",
+    "STPT",
+    "ARPA",
+    "CHZ",
+    "DUSK",
+    "PROM",
+    "AKRO",
+    "SXP",
+    "BAND",
+    "PAXG",
+    "DF",
+    "DAI",
+    "TRB",
+    "OXT",
+    "OGN",
+    "SOL",
+    "CTSI",
+    "UMA",
+    "ORN",
+    "RNDR",
+    "SKL",
+    "COMP",
+    "BAL",
+    "YFI",
+    "FIS",
+    "FRONT",
+    "WNXM",
+    "DIA",
+    "CREAM",
+    "SAND",
+    "OM",
+    "CRV",
+    "GRT",
+    "AXS",
+    "RAD",
+    "BEL",
+    "AMP",
+    "PERP",
+    "REEF",
+    "FXS",
+    "ACH",
+    "GHST",
+    "LINA",
+    "POLS",
+    "AAVE",
+    "UFT",
+    "LQTY",
+    "BOND",
+    "AUDIO",
+    "POND",
+    "WOO",
+    "KP3R",
+    "API3",
+    "BADGER",
+    "LDO",
+    "1INCH",
+    "CLV",
+    "MASK",
+    "AUCTION",
+    "ALCX",
+    "ILV",
+    "PUNDIX",
+    "PYR",
+    "FORTH",
+    "KNC",
+    "PENDLE",
+    "BICO",
+    "CVX",
+    "ATA",
+    "YGG",
+    "SPELL",
+    "AGLD",
+    "SYN",
+    "STG",
+    "ADA"
+]
+
 
 def get_token_name():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    return [token['symbol'][:-4] for token in data if token['symbol'].endswith('USDT')]
+    return [token['symbol'][:-4] for token in data if
+            token['symbol'].endswith('USDT') and token['symbol'][:-4] in TOKEN_AVAILABLE_LIST]
 
 
 def get_current_exchange_rate_pair():
@@ -78,7 +211,7 @@ def get_current_exchange_rate_usdt():
     response = rq.get(binance_url)
     data = response.json()
     result = {token['symbol'][:-4]: decimal.Decimal(token['price']) for token in data if
-              token['symbol'].endswith('USDT')}
+              token['symbol'].endswith('USDT') and token['symbol'][:-4] in CRYPTO_NAMES}
     result['USDT'] = decimal.Decimal(1)
     return result
 
@@ -144,7 +277,6 @@ def recalculate_percentage_in_strategy(strategy: Strategy, exchange_rate: dict):
     dict_data = {}
 
     for transaction_op in transactions:
-
         money_in_transaction = transaction_op.value * exchange_rate[transaction_op.crypto_pair[:-4]]
 
         trader_deposit += money_in_transaction

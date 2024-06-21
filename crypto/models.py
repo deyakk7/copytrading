@@ -30,7 +30,7 @@ def get_tokens_pair():
     binance_url = "https://api.binance.com/api/v3/ticker/price"
     response = rq.get(binance_url)
     data = response.json()
-    return [token['symbol'] for token in data][:100]
+    return [token['symbol'] for token in data]
 
 
 TOKENS_PAIR = get_tokens_pair()

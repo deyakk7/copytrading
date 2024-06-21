@@ -40,6 +40,8 @@ class Trader(models.Model):
     sortino_ratio = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True, null=True)
     last_traded_at = models.DateTimeField(default=None, blank=True, null=True)
 
+    auto_trading = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.nickname}"
 
