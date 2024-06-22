@@ -20,9 +20,12 @@ class Command(BaseCommand):
     help = 'Run auto trading loop'
 
     def add_to_pull(self, symbol, action):
+        print(symbol, action)
         strategies = Strategy.objects.filter(trader__auto_trading=True).order_by('?')
+        print(strategies)
         for strategy in strategies:
             cryptos = strategy.crypto.all()
+            print('cryptos:', cryptos)
 
             if symbol in [crypto.name for crypto in cryptos]:
                 usdt_crypto = cryptos.filter(name='USDT').first()
@@ -209,11 +212,11 @@ class Command(BaseCommand):
                     signals["short"] += 1
 
             if signals["long"] > signals["short"]:
-                print('Buy fib')
+                print('Buy fib' + symbol)
                 self.add_to_pull(symbol, 'buy')
 
             elif signals["short"] > signals["long"]:
-                print('Sell fib')
+                print('Sell fib' + symbol)
                 self.add_to_pull(symbol, 'sell')
 
         time_to_sleep = random.randint(1, 1)
