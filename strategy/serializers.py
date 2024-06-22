@@ -93,10 +93,10 @@ class UserCopiedStrategyHistorySerializer(serializers.ModelSerializer):
         fields = ['trader_id',  'strategy_id', 'value', 'date_of_adding', 'date_of_out', 'profit', 'income']
 
     def get_trader_id(self, obj):
-        return obj.strategy.trader.id
+        return obj.strategy.trader.nickname
 
     def get_strategy_id(self, obj):
-        return obj.strategy.id
+        return obj.strategy.name
 
 
 class StrategyUserListSerializer(serializers.ModelSerializer):

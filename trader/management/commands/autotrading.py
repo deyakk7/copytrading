@@ -81,6 +81,7 @@ class Command(BaseCommand):
                     print('Updated strategy with new cryptos')
                 else:
                     print('Failed to update strategy:', serializer.errors)
+                return
 
     def get_exchange_rate_autotrading(self):
         exchange_info = client.get_exchange_info()
