@@ -125,7 +125,7 @@ class Command(BaseCommand):
             elif signals["sell"] > signals["buy"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(1, 1)
+        time_to_sleep = random.randint(30, 180)
         time.sleep(time_to_sleep)
 
     def bolinger_indicator(self):
@@ -164,7 +164,7 @@ class Command(BaseCommand):
             elif signals["short"] > signals["long"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(1, 1)
+        time_to_sleep = random.randint(30, 180)
         time.sleep(time_to_sleep)
 
     def fibonacci_indicator(self):
@@ -219,7 +219,7 @@ class Command(BaseCommand):
                 print('Sell fib' + symbol)
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(1, 1)
+        time_to_sleep = random.randint(30, 180)
         time.sleep(time_to_sleep)
 
 
@@ -262,7 +262,7 @@ class Command(BaseCommand):
             elif signals["short"] > signals["long"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(1, 1)
+        time_to_sleep = random.randint(30, 180)
         time.sleep(time_to_sleep)
 
     def RSI_indicator(self):
@@ -293,16 +293,16 @@ class Command(BaseCommand):
             elif rsi_above_70:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(1, 1)
+        time_to_sleep = random.randint(30, 180)
         time.sleep(time_to_sleep)
 
     def handle(self, *args, **kwargs):
         while True:
-            # self.ATR_indicator()
-            # self.bolinger_indicator()
+            self.ATR_indicator()
+            self.bolinger_indicator()
             self.fibonacci_indicator()
-            # self.moving_average_indicator()
-            # self.RSI_indicator()
+            self.moving_average_indicator()
+            self.RSI_indicator()
             print("Running custom trading logic")
 
             time_to_sleep = random.randint(1, 5)
