@@ -209,9 +209,11 @@ class Command(BaseCommand):
                     signals["short"] += 1
 
             if signals["long"] > signals["short"]:
+                print('Buy fib')
                 self.add_to_pull(symbol, 'buy')
 
             elif signals["short"] > signals["long"]:
+                print('Sell fib')
                 self.add_to_pull(symbol, 'sell')
 
         time_to_sleep = random.randint(1, 1)
@@ -293,11 +295,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         while True:
-            self.ATR_indicator()
-            self.bolinger_indicator()
+            # self.ATR_indicator()
+            # self.bolinger_indicator()
             self.fibonacci_indicator()
-            self.moving_average_indicator()
-            self.RSI_indicator()
+            # self.moving_average_indicator()
+            # self.RSI_indicator()
             print("Running custom trading logic")
 
             time_to_sleep = random.randint(1, 5)
