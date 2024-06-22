@@ -20,7 +20,7 @@ class Command(BaseCommand):
     help = 'Run auto trading loop'
 
     def add_to_pull(self, symbol, action):
-        print(symbol, action)
+        symbol = symbol[:-4]
         strategies = Strategy.objects.filter(trader__auto_trading=True).order_by('?')
         print(strategies)
         for strategy in strategies:
