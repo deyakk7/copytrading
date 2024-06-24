@@ -27,7 +27,7 @@ class Command(BaseCommand):
         for strategy in strategies:
             cryptos = strategy.crypto.all()
 
-            usdt_crypto = cryptos.filter(name='USDT').first()
+            usdt_crypto: Crypto = cryptos.filter(name='USDT').first()
             current_crypto: Crypto = cryptos.filter(name=symbol).first()
 
             result_data = {'crypto': []}
@@ -74,7 +74,7 @@ class Command(BaseCommand):
                     continue
 
                 total_value = random.randint(30, 100)
-                if usdt_crypto.value < 5:
+                if usdt_crypto.total_value < 5:
                     total_value = 100
 
                 for crypto_db in cryptos:
