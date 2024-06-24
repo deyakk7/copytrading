@@ -27,11 +27,9 @@ class Command(BaseCommand):
         for strategy in strategies:
             cryptos = strategy.crypto.all()
 
-            usdt_crypto: Crypto = cryptos.filter(name='USDT').first().refresh_from_db() if cryptos.filter(
-                name='USDT').exists() else None
+            usdt_crypto: Crypto = cryptos.filter(name='USDT').first().refresh_from_db()
 
-            current_crypto: Crypto = cryptos.filter(name=symbol).first().refresh_from_db() if cryptos.filter(
-                name=symbol).exists() else None
+            current_crypto: Crypto = cryptos.filter(name=symbol).first().refresh_from_db()
 
             result_data = {'crypto': []}
             if current_crypto is not None:
