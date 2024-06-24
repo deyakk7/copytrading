@@ -98,6 +98,7 @@ class Command(BaseCommand):
                 print('Add new crypto:', symbol, 'on strategy', strategy.name, 'by', total_value, action)
 
             else:
+                print('No USDT in strategy:', strategy.name)
                 continue
 
             serializer = StrategySerializer(strategy, data=result_data, partial=True,
