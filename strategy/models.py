@@ -18,8 +18,8 @@ class Strategy(models.Model):
     trader_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
     available_pool = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
     total_deposited = models.DecimalField(default=0, decimal_places=2, max_digits=30, validators=[MinValueValidator(0)])
-    min_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
-    max_deposit = models.DecimalField(default=0, decimal_places=2, max_digits=30)
+    min_deposit = models.DecimalField(default=10, decimal_places=2, max_digits=30)
+    max_deposit = models.DecimalField(default=None, decimal_places=2, max_digits=30, null=True, blank=True)
     total_copiers = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     trader = models.ForeignKey(Trader, on_delete=models.CASCADE, related_name='strategies', null=True, blank=True)
 
