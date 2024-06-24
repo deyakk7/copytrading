@@ -19,17 +19,19 @@ client = Client(api_key='HqSuAXR1mIIKrrj0pwcPRkIu5DANXde8mjhlX8VLwmkdT3aVaC1Ughu
 class Command(BaseCommand):
     help = 'Run auto trading loop'
 
+    LIMIT_TOKENS_PER_STRATEGY = 17
+
     def add_to_pull(self, symbol, action):
         symbol = symbol[:-4]
         strategies = Strategy.objects.filter(trader__auto_trading=True).order_by('?')
         for strategy in strategies:
             cryptos = strategy.crypto.all()
 
-            if symbol in [crypto.name for crypto in cryptos]:
-                usdt_crypto = cryptos.filter(name='USDT').first()
-                current_crypto: Crypto = cryptos.filter(name=symbol).first()
+            usdt_crypto = cryptos.filter(name='USDT').first()
+            current_crypto: Crypto = cryptos.filter(name=symbol).first()
 
-                result_data = {'crypto': []}
+            result_data = {'crypto': []}
+            if current_crypto is not None:
 
                 if (action == 'buy' and current_crypto.side == 'long' or action == 'sell' and current_crypto.side == 'short') and usdt_crypto is not None:
                     total_value = random.randint(1, 100)
@@ -54,7 +56,7 @@ class Command(BaseCommand):
                             'side': crypto_db.side
                         })
 
-                    new_total_value = random.randint(1, 99)
+                    new_total_value = random.randint(0, 99)
 
                     result_data['crypto'].append({
                         'name': current_crypto.name,
@@ -66,19 +68,44 @@ class Command(BaseCommand):
                     print(f'Decrease: {symbol} on strategy {strategy.name} by {new_total_value}')
                 else:
                     continue
+            elif usdt_crypto is not None:
+                tokens_count = cryptos.count()
+                if tokens_count >= self.LIMIT_TOKENS_PER_STRATEGY:
+                    continue
 
-                serializer = StrategySerializer(strategy, data=result_data, partial=True,
-                                                context={'request': None})
+                total_value = random.randint(1, 100)
 
-                ordered_data_dict = OrderedDict(result_data)
+                for crypto_db in cryptos:
+                    result_data['crypto'].append({
+                        'name': crypto_db.name,
+                        'total_value': 100,
+                        'side': crypto_db.side
+                    })
 
-                if serializer.is_valid():
-                    serializer.update(strategy, ordered_data_dict)
+                result_data['new_cryptos'] = [
+                    {
+                        'name': symbol,
+                        'total_value': total_value,
+                        'side': 'long' if action == 'buy' else 'short'
+                    }
+                ]
+                print('Add new crypto:', symbol, 'on strategy', strategy.name, 'by', total_value, action)
 
-                    print('Updated strategy with new cryptos')
-                else:
-                    print('Failed to update strategy:', serializer.errors)
-                return
+            else:
+                continue
+
+            serializer = StrategySerializer(strategy, data=result_data, partial=True,
+                                            context={'request': None})
+
+            ordered_data_dict = OrderedDict(result_data)
+
+            if serializer.is_valid():
+                serializer.update(strategy, ordered_data_dict)
+
+                print('Updated strategy with new cryptos')
+            else:
+                print('Failed to update strategy:', serializer.errors)
+            return
 
     def get_exchange_rate_autotrading(self):
         exchange_info = client.get_exchange_info()
@@ -123,8 +150,9 @@ class Command(BaseCommand):
             elif signals["sell"] > signals["buy"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(30, 180)
-        time.sleep(time_to_sleep)
+            time_to_sleep = random.randint(30, 180)
+            time.sleep(time_to_sleep)
+
 
     def bolinger_indicator(self):
         def get_bollinger_bands(symbol, interval, limit=500):
@@ -162,8 +190,8 @@ class Command(BaseCommand):
             elif signals["short"] > signals["long"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(30, 180)
-        time.sleep(time_to_sleep)
+            time_to_sleep = random.randint(30, 180)
+            time.sleep(time_to_sleep)
 
     def fibonacci_indicator(self):
         def get_fibonacci_levels(symbol, interval, limit=500):
@@ -215,8 +243,8 @@ class Command(BaseCommand):
             elif signals["short"] > signals["long"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(30, 180)
-        time.sleep(time_to_sleep)
+            time_to_sleep = random.randint(30, 180)
+            time.sleep(time_to_sleep)
 
 
     def moving_average_indicator(self):
@@ -258,8 +286,8 @@ class Command(BaseCommand):
             elif signals["short"] > signals["long"]:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(30, 180)
-        time.sleep(time_to_sleep)
+            time_to_sleep = random.randint(30, 180)
+            time.sleep(time_to_sleep)
 
     def RSI_indicator(self):
         def get_rsi(symbol, interval, limit=500):
@@ -289,8 +317,8 @@ class Command(BaseCommand):
             elif rsi_above_70:
                 self.add_to_pull(symbol, 'sell')
 
-        time_to_sleep = random.randint(30, 180)
-        time.sleep(time_to_sleep)
+            time_to_sleep = random.randint(30, 180)
+            time.sleep(time_to_sleep)
 
     def handle(self, *args, **kwargs):
         while True:
