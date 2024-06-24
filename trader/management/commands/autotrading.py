@@ -37,6 +37,10 @@ class Command(BaseCommand):
                     total_value = random.randint(10, 100)
                     if total_value > 90:
                         total_value = 100
+
+                    if usdt_crypto.total_value < 5:
+                        total_value = 100
+
                     result_data['new_cryptos'] = [{'name': symbol, 'total_value': total_value, 'side': current_crypto.side}]
 
                     for crypto_db in cryptos:
