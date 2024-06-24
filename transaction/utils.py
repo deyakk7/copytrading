@@ -96,16 +96,21 @@ def averaging_open_transaction(crypto_db: Crypto, transaction_op: TransactionOpe
     return money
 
 
-def calculate_roi(transactions: TransactionOpen, exchange_rate: dict[str, decimal.Decimal]):
-    open_price = transactions.open_price
-    close_price = exchange_rate[transactions.crypto_pair[:-4]]
+def calculate_roi(transaction: TransactionOpen, exchange_rate: dict[str, decimal.Decimal]):
+    print(transaction.crypto_pair)
+    open_price = transaction.open_price
+    close_price = exchange_rate[transaction.crypto_pair[:-4]]
+    print(open_price)
+    print(close_price)
 
-    close_value = transactions.value
+    close_value = transaction.value
 
     income = close_value * close_price
     costs = close_value * open_price
+    print(income, costs)
+    print(close_price)
 
     roi = ((income - costs) / costs) * 100
-    roi = -roi if transactions.side == 'short' else roi
+    roi = -roi if transaction.side == 'short' else roi
 
     return roi
