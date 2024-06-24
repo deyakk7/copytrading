@@ -34,7 +34,7 @@ class Command(BaseCommand):
             if current_crypto is not None:
 
                 if (action == 'buy' and current_crypto.side == 'long' or action == 'sell' and current_crypto.side == 'short') and usdt_crypto is not None:
-                    total_value = random.randint(1, 100)
+                    total_value = random.randint(10, 100)
                     result_data['new_cryptos'] = [{'name': symbol, 'total_value': total_value, 'side': current_crypto.side}]
 
                     for crypto_db in cryptos:
@@ -56,7 +56,7 @@ class Command(BaseCommand):
                             'side': crypto_db.side
                         })
 
-                    new_total_value = random.randint(0, 99)
+                    new_total_value = random.randint(0, 80)
 
                     result_data['crypto'].append({
                         'name': current_crypto.name,
@@ -73,7 +73,9 @@ class Command(BaseCommand):
                 if tokens_count >= self.LIMIT_TOKENS_PER_STRATEGY:
                     continue
 
-                total_value = random.randint(1, 100)
+                total_value = random.randint(30, 100)
+                if usdt_crypto.value < 5:
+                    total_value = 100
 
                 for crypto_db in cryptos:
                     result_data['crypto'].append({
