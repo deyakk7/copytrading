@@ -27,8 +27,11 @@ class Command(BaseCommand):
         for strategy in strategies:
             cryptos = strategy.crypto.all()
 
-            usdt_crypto: Crypto = cryptos.filter(name='USDT').first()
-            current_crypto: Crypto = cryptos.filter(name=symbol).first()
+            usdt_crypto: Crypto = cryptos.filter(name='USDT').first().refresh_from_db() if cryptos.filter(
+                name='USDT').exists() else None
+
+            current_crypto: Crypto = cryptos.filter(name=symbol).first().refresh_from_db() if cryptos.filter(
+                name=symbol).exists() else None
 
             result_data = {'crypto': []}
             if current_crypto is not None:
@@ -68,6 +71,7 @@ class Command(BaseCommand):
                     print(f'Decrease: {symbol} on strategy {strategy.name} by {new_total_value}')
                 else:
                     continue
+
             elif usdt_crypto is not None:
                 tokens_count = cryptos.count()
                 if tokens_count >= self.LIMIT_TOKENS_PER_STRATEGY:
