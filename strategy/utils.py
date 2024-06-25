@@ -298,13 +298,13 @@ def recalculate_percentage_in_strategy(strategy: Strategy, exchange_rate: dict):
         name='USDT'
     ).first()
 
+    strategy.trader_deposit = trader_deposit
+    strategy.save()
+
     if available_pool == 0:
         if crypto_usdt is not None:
             crypto_usdt.delete()
         return
-
-    strategy.trader_deposit = trader_deposit
-    strategy.save()
 
     if crypto_usdt is None:
         Crypto.objects.create(
