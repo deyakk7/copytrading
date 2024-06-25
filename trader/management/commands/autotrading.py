@@ -65,6 +65,8 @@ class Command(BaseCommand):
                     new_total_value = random.randint(0, 80)
                     if new_total_value < 10:
                         new_total_value = 0
+                    if current_crypto.total_value < 2:
+                        new_total_value = 0
 
                     result_data['crypto'].append({
                         'name': current_crypto.name,
