@@ -301,7 +301,7 @@ def recalculate_percentage_in_strategy(strategy: Strategy, exchange_rate: dict):
     if available_pool == 0:
         if crypto_usdt is not None:
             crypto_usdt.delete()
-            return
+        return
 
     strategy.trader_deposit = trader_deposit
     strategy.save()

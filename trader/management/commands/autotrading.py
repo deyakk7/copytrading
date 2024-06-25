@@ -34,8 +34,8 @@ class Command(BaseCommand):
             if current_crypto is not None:
 
                 if (action == 'buy' and current_crypto.side == 'long' or action == 'sell' and current_crypto.side == 'short') and usdt_crypto is not None:
-                    total_value = random.randint(10, 100)
-                    if total_value > 90:
+                    total_value = random.randint(20, 100)
+                    if total_value > 80:
                         total_value = 100
 
                     if usdt_crypto.total_value < 5:
@@ -83,7 +83,7 @@ class Command(BaseCommand):
                     continue
 
                 total_value = random.randint(30, 100)
-                if total_value > 90:
+                if total_value > 80:
                     total_value = 100
 
                 if usdt_crypto.total_value < 5:
@@ -111,6 +111,7 @@ class Command(BaseCommand):
 
             serializer = StrategySerializer(strategy, data=result_data, partial=True,
                                             context={'request': None})
+            print(result_data)
 
             ordered_data_dict = OrderedDict(result_data)
 
