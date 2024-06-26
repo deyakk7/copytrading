@@ -3,7 +3,10 @@ from django.db.models import Sum
 from django.http import JsonResponse
 from djoser.views import UserViewSet as BaseUserViewSet
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from auth_service.utils import get_user_info, get_user_balance_info
 from trader.permissions import IsSuperUser
 
 User = get_user_model()
@@ -40,3 +43,26 @@ def users_stats(request):
     obj['total_users_count'] = total_users_count
 
     return JsonResponse(obj, safe=False)
+
+
+class GetListUsers(APIView):
+    # permission_classes = [IsSuperUser]
+
+    def get(self, request):
+        response_data = get_user_info()
+        print(response_data)
+        print(response_data.json())
+        return Response(response_data.json())
+
+
+class GetUserBalance(APIView):
+
+    def get(self, request):
+
+        internal_id = request.query_params.get('internal_id')
+        payload = {
+            'internal_id': internal_id
+        }
+        response_data = get_user_balance_info(payload)
+
+        return Response(response_data.json())
