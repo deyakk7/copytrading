@@ -121,6 +121,14 @@ def add_user_into_strategy(request, pk: int):
     except:
         return JsonResponse({"error": "Strategy not found"}, status=404, safe=False)
 
+    value = decimal.Decimal(input_data['value'])
+
+    if strategy.min_deposit > value:
+        return JsonResponse({"error": "Min deposit is greater than value"}, status=400, safe=False)
+
+    if strategy.max_deposit is not None and strategy.max_deposit < value:
+        return JsonResponse({"error": "Max deposit is less than value"}, status=400, safe=False)
+
     if strategy.trader is None:
         return JsonResponse({"error": "This strategy is not available"}, status=400, safe=False)
 
